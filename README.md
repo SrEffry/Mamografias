@@ -5,7 +5,7 @@
 > Este prototipo NO diagnostica cáncer. La clasificación de una lesión con
 > diagnóstico patológico no equivale a diagnosticar a una paciente.
 
-**Autor:** [Tu nombre]
+**Autor:** Kevin Martinez Martinez - Iván Gonzalez Ordosgoitia - Efren Suárez Negrete
 **Repositorio:** https://github.com/SrEffry/Mamografias
 **Bitácora:** ver [BITACORA.md](BITACORA.md)
 
