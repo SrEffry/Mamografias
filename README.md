@@ -5,9 +5,20 @@
 > Este prototipo NO diagnostica cáncer. La clasificación de una lesión con
 > diagnóstico patológico no equivale a diagnosticar a una paciente.
 
-**Autor:** Kevin Martinez Martinez - Iván Gonzalez Ordosgoitia - Efren Suárez Negrete
+**Autor:** Kevin Martinez Martinez - Iván González Ordosgoitia - Efren Suárez Negrete
 **Repositorio:** https://github.com/SrEffry/Mamografias
-**Bitácora:** ver [BITACORA.md](BITACORA.md)
+**Bitácora:** [BITACORA.md](BITACORA.md)
+
+## Estado del proyecto
+
+| Etapa | Estado |
+|---|---|
+| Comprensión del problema, etiquetas e hipótesis | Hecho |
+| Datos: descarga, indexación, EDA tabular y partición por paciente | Hecho |
+| EDA de imágenes y preprocesamiento | [En curso / pendiente] |
+| Línea base y transferencia de aprendizaje | Pendiente |
+| Experimento controlado, errores y umbral | Pendiente |
+| Interfaz Gradio, informe y reproducibilidad | Pendiente |
 
 ---
 
@@ -18,17 +29,21 @@ benignas o malignas a partir de imágenes con etiquetas de referencia, y que
 permita visualizar el resultado en una interfaz Gradio.
 
 - **Alcance mínimo:** clasificación binaria y evaluación rigurosa.
-- **Opcionales:** Grad-CAM, localización de lesiones, comparación de dos
-  arquitecturas.
+- **Opcionales:** Grad-CAM, localización de lesiones, comparación de dos arquitecturas.
 - **Fuera de alcance:** segmentación, entrenamiento clínico, uso en decisiones médicas.
 
 ## 2. Comprensión del problema
 
 - **Usuario:** estudiantes y docentes, en un contexto exclusivamente educativo.
-- **Unidad de análisis:** la lesión (una fila por lesión, no por imagen,
-  por mama ni por paciente).
-- **Significado de las etiquetas:** provienen del diagnóstico patológico de
-  la lesión (biopsia), no de un diagnóstico a la paciente.
+- **Unidad de análisis:** la lesión (una fila por lesión, no por imagen, mama ni paciente).
+- **Entrada del modelo:** el **recorte de la lesión (ROI)** que trae el dataset, no la
+  mamografía completa. Motivo: en la mamografía completa, la lesión ocupa una fracción
+  muy pequeña de la imagen (la máscara observada mide 4556x2585 px frente a un recorte
+  de 434x387 px) y la imagen incluye texto grabado (por ejemplo "LCC" o "LMLO") que un
+  modelo podría aprender en lugar de la lesión. Consecuencia: el prototipo clasifica
+  recortes de lesiones, y la interfaz recibirá un recorte.
+- **Significado de las etiquetas:** provienen del diagnóstico patológico de la lesión
+  (biopsia), no de un diagnóstico a la paciente.
 
 ### Mapeo de etiquetas
 
@@ -66,44 +81,110 @@ benigna) es más costoso que un falso positivo.
 
 ## 3. Datos
 
-- **Fuente:** CBIS-DDSM (The Cancer Imaging Archive, TCIA)
+### Fuente y obtención
+
+- **Dataset:** CBIS-DDSM, tarea sobre **masas** (se descartaron las calcificaciones:
+  son lesiones muy pequeñas que se pierden al reducir a 224x224).
+- **Metadatos (CSV):** `mass_case_description_train_set.csv` y
+  `mass_case_description_test_set.csv` [de TCIA: confirmar]
   https://www.cancerimagingarchive.net/collection/cbis-ddsm/
-- **Versión y licencia:** [completar según la página de TCIA]
-- **Origen de las etiquetas:** diagnóstico patológico por lesión, incluido
-  en los CSV de metadatos del dataset.
-- **Subconjunto elegido:** [masas / calcificaciones], porque [razón].
-- **Pacientes / imágenes / lesiones:** [completar tras el EDA]
-- **Distribución por clase:** [benigna: N, maligna: N]
-- **Vistas:** [CC: N, MLO: N]
-- **Exclusiones:** [casos descartados y motivo]
+- **Imágenes DICOM:** descargadas con manifiestos del NCI Imaging Data Commons (IDC),
+  en varias tandas. [Confirmar el procedimiento exacto.]
+- **Versión y licencia:** [completar según la página de TCIA/IDC]
+- **Origen de las etiquetas:** diagnóstico patológico por lesión, incluido en los CSV.
 
-### Herramientas
+Los CSV completos de masas tienen:
 
-- **Weka 3.8.x** (versión: [___], se ve en Help → About): análisis exploratorio
-  y limpieza de los CSV de metadatos.
-- **Python [3.x]:** lectura de DICOM, partición por paciente, preprocesamiento,
-  modelado, evaluación e interfaz Gradio.
-- **Librerías:** ver `requirements.txt`.
-- **Entorno de ejecución:** [Colab / Kaggle / equipo local, GPU: ___].
+| Archivo | Lesiones | Pacientes | MALIGNANT | BENIGN | BENIGN_WITHOUT_CALLBACK |
+|---|---|---|---|---|---|
+| mass train | 1318 | 691 | 637 | 577 | 104 |
+| mass test | 378 | 201 | 147 | 194 | 37 |
+
+Entre ambos hay 784 lesiones en vista CC y 912 en MLO. Los pacientes del train
+oficial y del test oficial no se solapan (comprobado en código).
+
+### Subconjunto utilizado
+
+Por limitaciones de espacio y tiempo no se descargó el dataset completo.
+**Criterio de selección del subconjunto:** [describir cómo se eligieron los
+pacientes o lesiones descargados; si no fue aleatorio, decirlo: es una posible
+fuente de sesgo de selección].
+
+Una lesión se considera **disponible** solo si se tiene su **serie ROI completa**
+(recorte y máscara). Tener únicamente la mamografía completa no cuenta, porque el
+modelo usa el recorte.
+
+| | Lesiones | Pacientes | Malignas | Benignas |
+|---|---|---|---|---|
+| Del train oficial | 108 | 54 | 52 | 56 |
+| Del test oficial | 103 | 51 | 33 | 70 |
+| **Total** | **211** | **105** | **85** | **126** |
+
+Vistas CC/MLO del subconjunto: [completar].
+
+### Calidad de los datos y exclusiones
+
+- Total de archivos .dcm descargados: 623. Seis eran archivos **vacíos** (0 bytes,
+  sin cabecera DICM), probablemente por una descarga o copia interrumpida: se excluyeron.
+  Quedaron 617 archivos DICOM válidos, en 417 series.
+- Dos lesiones tenían un solo archivo ROI y se excluyeron:
+  P_00408_RIGHT_MLO_1 y P_00413_LEFT_MLO_1.
+- Los archivos válidos tienen todos cabecera DICOM estándar (0 de 617 sin ella), así
+  que se lee con `pydicom` sin forzar.
+- Recorte y máscara se distinguen **por su área** (la máscara tiene el tamaño de la
+  mamografía completa), no por el nombre del archivo, porque en el CSV el orden
+  `000000.dcm` / `000001.dcm` no es consistente.
+
+### Hallazgos del análisis exploratorio
+
+- **Hay varias lesiones por paciente** (hasta 14) y varias lesiones comparten la misma
+  mamografía (1592 mamografías distintas para 1696 lesiones). Por eso la partición
+  debe ser por paciente.
+- **`assessment` (BI-RADS) casi contiene la respuesta:** en el CSV completo,
+  363 de 374 lesiones con assessment 5 son malignas. No se usa como predictor.
+- **Valores faltantes:** `mass shape` (4) y `mass margins` (60). No se usan
+  en el modelo de imágenes, por lo que no se excluyeron lesiones por ello.
+- **`subtlety`** tiene 2 filas con valor 0 (la escala esperada es de 1 a 5);
+  no se usa esa columna.
+- **Sin filas duplicadas** en los CSV.
+- **Resolución de los recortes:** [completar tras el EDA de imágenes].
+- **Duplicados de imagen:** [completar].
+- **Análisis exploratorio con Weka** (capturas en `weka/capturas/`) y con Python
+  (`notebooks/`).
 
 ### Partición de datos
 
-Entrenamiento, validación y prueba se separan **por paciente** (con
-`GroupShuffleSplit` sobre `patient_id`), para evitar fuga entre imágenes de
-una misma paciente. Los CSV resultantes se guardan para reproducibilidad.
-El conjunto de prueba no se usa para elegir hiperparámetros ni umbral.
+Se juntaron las lesiones disponibles de los conjuntos oficiales de entrenamiento y
+prueba (211 lesiones) y se repartieron **por paciente** con `StratifiedGroupKFold`
+sobre `patient_id` (semilla 42), estratificando por etiqueta. Se aparta de la partición
+oficial porque el subconjunto descargado del train oficial era demasiado pequeño para
+validar con rigor. Se pierde la comparabilidad con la partición oficial.
 
-| Partición | Pacientes | Lesiones | Benignas | Malignas |
-|---|---|---|---|---|
-| Entrenamiento | [ ] | [ ] | [ ] | [ ] |
-| Validación | [ ] | [ ] | [ ] | [ ] |
-| Prueba | [ ] | [ ] | [ ] | [ ] |
+| Partición | Lesiones | Pacientes | Malignas | Benignas | % malignas |
+|---|---|---|---|---|---|
+| Entrenamiento | 146 | 74 | 64 | 82 | 43,8 % |
+| Validación | 37 | 16 | 10 | 27 | 27,0 % |
+| Prueba | 28 | 15 | 11 | 17 | 39,3 % |
+
+- **Cero pacientes solapados** entre las tres particiones (verificado en código con `assert`).
+- **La validación tiene una prevalencia menor** (27 %) que entrenamiento y prueba. Se evaluaron
+  200 semillas con un criterio fijado antes de entrenar y se encontraron particiones más
+  equilibradas, pero se decidió mantener la semilla 42 por simplicidad (ver bitácora).
+- El conjunto de prueba **no se usa** para elegir hiperparámetros ni umbral.
+- Script: `src/01_particion.py` (modo `propio`). Resultados en `particiones/`.
 
 ### Preprocesamiento
 
-[Completar: lectura DICOM, imagen completa o recorte (ROI), normalización,
-redimensionamiento a 224x224, conversión a 3 canales. Aumentos moderados
-(flip, rotación leve) solo en entrenamiento.]
+[Completar: lectura DICOM del recorte, normalización, redimensionamiento a 224x224,
+conversión a 3 canales. Aumentos moderados (flip, rotación leve) solo en entrenamiento;
+validación y prueba sin aumentos.]
+
+### Herramientas
+
+- **Weka [versión: ___]** (Help → About): análisis exploratorio de los CSV de metadatos.
+- **Python en Google Colab [versión: ___]**, con los archivos en Google Drive:
+  lectura de DICOM, partición, preprocesamiento, modelado, evaluación y Gradio.
+- **Librerías:** ver `requirements.txt`. **GPU:** [___]
 
 ## 4. Modelado
 
@@ -112,13 +193,7 @@ redimensionamiento a 224x224, conversión a 3 canales. Aumentos moderados
 | Línea base | [CNN pequeña] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
 | Transferencia | ResNet18 preentrenada | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
 
-**Experimento controlado:** [una sola decisión modificada, por ejemplo con
-vs. sin aumentos de datos]
-
-**Referencia tabular (opcional):** [si se entrena un clasificador en Weka
-sobre metadatos, indicarlo aquí como referencia adicional. No se usa la
-columna `assessment` (BI-RADS) como predictor, porque contiene la sospecha
-radiológica y filtraría la respuesta.]
+**Experimento controlado:** [una sola decisión modificada, por ejemplo con vs. sin aumentos]
 
 ## 5. Evaluación
 
@@ -132,17 +207,19 @@ radiológica y filtraría la respuesta.]
 | F1 | [ ] | [ ] |
 | ROC-AUC | [ ] | [ ] |
 
+- **Intervalos de confianza:** con 10 malignas en validación y 11 en prueba, las
+  métricas son muy inestables. Se reportarán intervalos de confianza (por ejemplo
+  de Wilson). Como referencia, detectar 8 de 11 malignas da un intervalo del 95 % de
+  aproximadamente 43 % a 90 %.
 - **Umbral elegido (con validación):** [ ]
-- **Matriz de confusión:** [ver results/]
-- **Análisis de falsos negativos y positivos:** [ver results/ y el informe]
+- **Matriz de confusión, falsos negativos y falsos positivos:** [ver results/]
 
-La salida del modelo es una **puntuación**, no una probabilidad clínica
-calibrada.
+La salida del modelo es una **puntuación**, no una probabilidad clínica calibrada.
 
 ## 6. Interfaz (Gradio)
 
-[Completar al terminar: cómo ejecutarla, formatos admitidos (PNG, JPG),
-manejo de imágenes inválidas.]
+[Completar al terminar: cómo ejecutarla, formatos admitidos (por ejemplo PNG o JPG de
+un recorte de lesión), manejo de imágenes inválidas.]
 La interfaz muestra de forma visible: *«Prototipo académico; no apto para
 diagnóstico ni decisiones clínicas»*.
 
@@ -150,9 +227,20 @@ diagnóstico ni decisiones clínicas»*.
 
 - Prototipo académico: no diagnostica cáncer ni sirve para decisiones médicas.
 - La etiqueta es el diagnóstico patológico de una lesión, no el de una paciente.
-- Dataset pequeño y de una sola fuente: riesgo de sobreajuste y de sesgo de selección.
+- Conjunto pequeño (211 lesiones de 105 pacientes) y de una sola fuente: riesgo de
+  sobreajuste y de sesgo de selección. [Añadir cómo se eligió el subconjunto.]
+- Validación y prueba con solo 10 y 11 lesiones malignas: la sensibilidad es muy
+  inestable y las comparaciones entre modelos tienen poca potencia estadística.
+- La validación tiene 27 % de malignas frente a 43,8 % en entrenamiento: el umbral
+  elegido en validación puede no transferirse a la prueba.
+- Se usó una partición propia, no la oficial; los resultados no son comparables con
+  otros trabajos sobre CBIS-DDSM.
+- El modelo clasifica recortes de lesión, no mamografías completas.
+- Un paciente tiene lesiones de ambas clases, por lo que la estratificación por
+  paciente no es perfecta.
+- Las imágenes de CBIS-DDSM son [mamografías de película digitalizadas: verificar en la
+  documentación del dataset], lo que puede limitar la generalización.
 - La salida del modelo es una puntuación, no una probabilidad clínica calibrada.
-- [Agregar más al avanzar: generalización, calidad de las imágenes, sesgos del dataset.]
 
 ## 8. Estructura del repositorio
 
@@ -162,33 +250,44 @@ Mamografias/
 ├── BITACORA.md
 ├── requirements.txt
 ├── .gitignore
-├── data/          (ignorada por Git: DICOM y datos pesados)
+├── data/            (ignorada por Git: CSV originales y DICOM)
+├── particiones/     train.csv, val.csv, test.csv, reporte_particion.txt,
+│                    lesiones_descargadas.txt
+├── src/             01_particion.py, 00_seleccion_subconjunto.py
+├── notebooks/       EDA, índice de DICOM, experimentos, demo
 ├── weka/
-│   ├── arff/      (archivos preparados para Weka)
-│   └── capturas/  (pantallazos del EDA)
-├── notebooks/     (EDA, experimentos, demo)
-├── src/           (dataset, entrenamiento, evaluación)
-├── app/           (interfaz Gradio)
-├── results/       (métricas, matrices, figuras)
+│   ├── arff/
+│   └── capturas/
+├── results/         gráficos y métricas
 └── informe/
 ```
+
+No se versionan los DICOM ni los archivos con rutas de Google Drive
+(`indice_dicom.csv`, `lesiones_disponibles.csv`, `archivos_ilegibles.csv`).
 
 ## 9. Cómo reproducir
 
 1. Clonar el repositorio:
    `git clone https://github.com/SrEffry/Mamografias.git`
 2. Crear el entorno e instalar dependencias:
-   `python -m venv venv`, activarlo, y `pip install -r requirements.txt`
-3. Descargar el subconjunto de CBIS-DDSM desde TCIA con NBIA Data Retriever
-   y colocarlo en `data/`. [Indicar el manifiesto o los IDs del subconjunto.]
-4. [Ejecutar la partición por paciente: `python src/...`]
-5. [Entrenar: `python src/...`]
-6. [Evaluar: `python src/...`]
-7. [Lanzar la interfaz: `python app/app.py`]
-8. Semilla utilizada: [42]
+   `python -m venv venv`, activarlo y `pip install -r requirements.txt`
+3. Descargar los CSV de masas de CBIS-DDSM y colocarlos en `data/`.
+4. Obtener las imágenes: `particiones/lesiones_descargadas.txt` lista las 211 lesiones.
+   Con los CSV se obtienen los `SeriesInstanceUID` de sus series ROI
+   (tercer componente de las rutas `cropped image file path` y `ROI mask file path`),
+   que se descargan de IDC.
+5. Indexar los DICOM leyendo el encabezado (notebook `[nombre]`) y generar
+   `lesiones_descargadas.txt`.
+6. Partición por paciente (semilla 42):
+   ```
+   python src/01_particion.py --data data --out particiones --modo propio \
+       --disponibles particiones/lesiones_descargadas.txt
+   ```
+7. [Preprocesamiento, entrenamiento, evaluación e interfaz: completar.]
 
 ## 10. Referencias
 
 - Lee, R. S. et al. *A curated mammography data set for use in computer-aided
-  detection and diagnosis research* (CBIS-DDSM). Scientific Data, 2017.
+  detection and diagnosis research* (CBIS-DDSM). Scientific Data, 2017. [Verificar]
 - The Cancer Imaging Archive (TCIA): https://www.cancerimagingarchive.net/
+- NCI Imaging Data Commons (IDC): https://portal.imaging.datacommons.cancer.gov/
