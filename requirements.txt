@@ -1,0 +1,11 @@
+# Versiones de Google Colab usadas el 17/11/2026 (GPU Tesla T4)
+matplotlib==3.10.0
+numpy==2.4.6
+opencv-python-headless==5.0.0.93
+pandas==2.2.3
+pillow==11.3.0
+pydicom==3.0.2
+scikit-learn==1.6.1
+torch==2.14.1
+torchvision==0.29.1
+tqdm==4.67.3
