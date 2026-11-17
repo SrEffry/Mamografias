@@ -10,16 +10,13 @@
 
 ## 15/11/2026 - Día 1
 
-**Actividad:** Selección del dataset, análisis inicial de los CSV de metadatos,
-definición de etiquetas y herramientas, y creación del repositorio.
+**Actividad:** Selección del dataset, análisis de los CSV de metadatos, definición de
+etiquetas, hipótesis y repositorio; primeras imágenes.
 
 **Qué hice:**
 - Revisé las tres fuentes que recomienda la guía: CBIS-DDSM, VinDr-Mammo e INbreast.
-- Entré a la página de CBIS-DDSM en TCIA y revisé la documentación, la licencia
-  y los archivos disponibles.
-- Descargué los cuatro CSV de metadatos: masas (train y test) y calcificaciones
-  (train y test).
-- Revisé columnas, clases, pacientes únicos, vistas, valores faltantes y duplicados:
+- Descargué los cuatro CSV de CBIS-DDSM (masas y calcificaciones, train y test) y revisé
+  columnas, clases, pacientes únicos, vistas, valores faltantes y duplicados:
 
   | Archivo | Lesiones | Pacientes | MALIGNANT | BENIGN | BENIGN_WITHOUT_CALLBACK |
   |---|---|---|---|---|---|
@@ -28,135 +25,151 @@ definición de etiquetas y herramientas, y creación del repositorio.
   | calc train | 1546 | 602 | 544 | 528 | 474 |
   | calc test | 326 | 151 | 129 | 130 | 67 |
 
-- Comprobé que las particiones oficiales de train y test no comparten ninguna
-  paciente (ni en masas ni en calcificaciones).
-- Definí la unidad de análisis (la lesión) y el mapeo de etiquetas.
-- Escribí en el README las dos hipótesis, el costo de los errores y las
-  limitaciones, antes de realizar cualquier experimento.
-- Creé el repositorio en GitHub con la estructura inicial del proyecto.
+- Comprobé que train y test oficiales no comparten pacientes.
+- Definí la unidad de análisis (lesión) y el mapeo de etiquetas.
+- Escribí en el README las hipótesis H1 y H2, el costo de los errores y las
+  limitaciones, antes de cualquier experimento.
+- Creé el repositorio en GitHub y la estructura inicial.
+- [Primera descarga de imágenes por IDC y lectura de las primeras con pydicom en Colab.
+  Dimensiones observadas: mamografías completas 4808x3024 y 5341x3496; recorte 434x387;
+  máscara 4556x2585.]
 
 **Hallazgos sobre los datos:**
-- En masas train hay 1318 lesiones pero solo 1231 imágenes completas distintas,
-  y una paciente llega a tener 14 lesiones. Dividir por lesión produciría fuga
-  de datos, así que la partición debe ser por paciente.
-- Hay 13 pacientes en train y 5 en test con lesiones de clases distintas, por
-  lo que la estratificación por paciente no será perfecta (limitación).
-- La columna `assessment` (BI-RADS) contiene casi la respuesta: en masas train,
-  293 de 299 lesiones con assessment 5 son malignas, y ninguna con assessment 2
-  lo es. No se usará como predictor.
-- 129 lesiones de masas train tienen assessment 0 (evaluación incompleta).
+- Hay hasta 14 lesiones por paciente y 1592 mamografías distintas para 1696 lesiones de
+  masas: varias lesiones comparten la misma mamografía. Hay que dividir por paciente.
+- La columna `assessment` (BI-RADS) casi contiene la respuesta: en masas train, 293 de
+  299 lesiones con assessment 5 son malignas, y ninguna con assessment 2 lo es.
 - Valores faltantes en masas train: `mass margins` (43) y `mass shape` (4).
-- Las rutas de `ROI mask file path` terminan con un salto de línea que hay que
-  limpiar. La columna de densidad se llama `breast_density` en masas y
-  `breast density` en calcificaciones.
-- 79 pacientes aparecen tanto en masas como en calcificaciones.
-- Distribución con el mapeo binario: masas train 637 malignas / 681 benignas
-  (48,3 % malignas); masas test 147 / 231 (38,9 % malignas). La prueba tiene
-  menos proporción de malignas que el entrenamiento.
+- Las rutas de `ROI mask file path` terminan con un salto de línea que hay que limpiar.
+- En el CSV, recorte y máscara apuntan a `000000.dcm` o `000001.dcm` en un orden que no
+  es consistente (en masas suele ser recorte 000000 y máscara 000001; en calcificaciones,
+  al revés); en 92 filas de masas train y 11 de test ambas rutas terminan en
+  `000000.dcm`.
+- Con el mapeo binario, masas train queda 637 malignas / 681 benignas (48,3 %) y masas test
+  147 / 231 (38,9 %).
 
 **Dificultad:**
-- El dataset completo en DICOM es pesado, por lo que debo trabajar con un
-  subconjunto.
-- Las rutas de recorte y máscara no son consistentes: en masas el recorte
-  suele terminar en 000000.dcm y la máscara en 000001.dcm, en calcificaciones
-  es al revés, y en 92 filas de masas train y 11 de test ambas rutas terminan
-  en 000000.dcm. No se pueden distinguir por el nombre.
-- Menor: errores iniciales con Git (identidad de usuario y un push rechazado
-  porque GitHub ya tenía un commit inicial), que resolví integrando los
-  historiales con un merge.
+- Comandos de PowerShell usados en CMD (`New-Item`), configuración de la identidad de Git
+  y un push rechazado porque GitHub ya tenía un commit inicial; resueltos con
+  `type nul`, `git config` y un `git pull --allow-unrelated-histories`.
+- No era posible distinguir recorte y máscara por el nombre del archivo.
+- El dataset completo en DICOM es muy pesado.
 
 **Alternativas consideradas:**
-- **VinDr-Mammo:** más grande y con BI-RADS, pero BI-RADS indica sospecha
-  radiológica, no malignidad confirmada por patología, y requiere acceso en PhysioNet.
-- **INbreast:** solo 410 imágenes, pocas para entrenar y evaluar con
-  partición por paciente.
-- **CBIS-DDSM, calcificaciones:** son lesiones muy pequeñas que se pierden al
-  reducir a 224x224.
-- **CBIS-DDSM, masas:** lesiones más visibles, clases equilibradas con el
-  mapeo binario y patología confirmada por lesión.
-- **Herramientas:** hacer todo en Python o dividir el trabajo con Weka.
+- **VinDr-Mammo:** BI-RADS indica sospecha radiológica, no malignidad confirmada, y exige
+  acceso en PhysioNet.
+- **INbreast:** solo 410 imágenes, pocas para evaluar con partición por paciente.
+- **CBIS-DDSM, calcificaciones:** lesiones muy pequeñas que se pierden al reducir a 224x224.
+- **CBIS-DDSM, masas:** lesiones más visibles y clases equilibradas con el mapeo binario.
 
 **Decisiones:**
 1. **Dataset:** CBIS-DDSM, solo masas, con la lesión como unidad de análisis.
-2. **Mapeo de etiquetas:** BENIGN y BENIGN_WITHOUT_CALLBACK pasan a benigna (0);
-   MALIGNANT pasa a maligna (1). La etiqueta proviene del diagnóstico
-   patológico de la lesión, no de un diagnóstico a la paciente.
-3. **Partición:** usar la partición oficial de test como prueba y obtener la
-   validación del train oficial, agrupando por `patient_id` en Python
-   (`GroupShuffleSplit` o `StratifiedGroupKFold`), con una comprobación de cero
-   solapamiento entre particiones.
-4. **Herramientas:** Weka para el análisis exploratorio y la limpieza de los
-   CSV de metadatos; Python para DICOM, partición, modelado y Gradio. Weka no
-   lee DICOM ni permite construir la interfaz.
-5. **Variables:** no usar `assessment`, `patient_id` ni las rutas como
-   predictores en ningún clasificador tabular.
+2. **Mapeo:** BENIGN y BENIGN_WITHOUT_CALLBACK pasan a benigna (0); MALIGNANT a maligna (1).
+3. **Entrada del modelo:** el recorte ROI y no la mamografía completa, porque la lesión
+   ocupa una fracción mínima de la imagen completa y esta trae texto grabado que un modelo
+   podría aprender.
+4. **Herramientas:** Weka para el EDA de los CSV; Python para DICOM, partición, modelado y Gradio.
+5. **Variables:** no usar `assessment`, `patient_id` ni las rutas como predictores.
 
-**Evidencia:**
-- README con mapeo de etiquetas, hipótesis, costo de errores y limitaciones.
-- Commits fechados en el repositorio.
-- CSV originales en data/ (ignorada por Git por su tamaño).
-- [Captura del conteo de pathology en Weka, en weka/capturas/, cuando esté hecha.]
+**Evidencia:** README con mapeo e hipótesis, commits fechados, [capturas en weka/capturas/].
 
 **Contribución individual:** [Describir con precisión qué hice yo.]
 
 ---
 
-## [DD/MM/2026] - Día 2
+## 16/11/2026 - Día 2
 
-**Actividad:** Acceso a las imágenes DICOM en Google Colab y lectura de las
-primeras imágenes.
+**Actividad:** Descarga e indexación de los DICOM, EDA con Weka, partición por paciente.
 
 **Qué hice:**
-- Monté el dataset en Colab [desde Google Drive / otra fuente] y leí archivos
-  DICOM con pydicom.
-- Escogí pacientes al azar para validar la lectura y la correspondencia con el CSV:
-  [P_00001, P_02092, ...].
-- Mostré mamografías completas, un recorte de lesión (ROI) y una máscara.
-- Dimensiones observadas:
-  - P_00001_LEFT_CC, mamografía completa: 4808 x 3024
-  - P_02092_LEFT_MLO, mamografía completa: 5341 x 3496
-  - P_02092_LEFT_CC_1, recorte ROI: 434 x 387
-  - P_02092_LEFT_CC_1, máscara: 4556 x 2585
-- [Descargué un subconjunto de N lesiones / N pacientes, elegido por ___.]
+- **EDA en Weka** sobre el CSV de masas train (relación `mass_train_limpio`, 1318 instancias):
+  conteo de `pathology` (637 / 577 / 104), `patient_id` con 691 valores distintos
+  (196 aparecen una sola vez, un 15 %), `mass_margins` con 43 faltantes (3 %) e histogramas
+  de todos los atributos. [Falta la captura del test.]
+- **Cruce de las imágenes con el CSV.** El primer cruce por nombre de carpeta dio 0
+  coincidencias porque los archivos de IDC vienen planos (nombrados por instancia), sin
+  carpetas por lesión. Lo resolví con los manifiestos de IDC (`File Instance Name` y
+  `Series ID`). Primer resultado: 167 archivos, 113 series, 59 lesiones con el criterio
+  laxo (cualquiera de las tres imágenes) y 57 con el criterio estricto (serie ROI), de 29
+  pacientes, todas del train oficial.
+- **Segunda y tercera descarga**, incluyendo lesiones del test. Para no depender de los
+  manifiestos ni de la carpeta, indexé los DICOM leyendo el encabezado con pydicom
+  (SeriesInstanceUID, SOPInstanceUID, Rows y Columns) y cruzando por UID de serie con el CSV.
+  Tras la segunda descarga (470 archivos): 160 lesiones completas, 57 de train y 103 de test.
+- **Tras la tercera descarga:** 623 archivos, 6 de ellos ilegibles, 617 válidos en 417 series.
+  Lesiones completas (recorte + máscara): **211**, de ellas 108 de train (54 pacientes, 52
+  malignas) y 103 de test (51 pacientes, 33 malignas).
+- **Partición por paciente** de esas 211 lesiones (ver decisiones).
 
 **Hallazgos:**
-- El recorte y la máscara están en la misma carpeta de la lesión, pero tienen
-  tamaños muy distintos: la máscara tiene el tamaño de la mamografía completa
-  y el recorte es pequeño. Por eso se distinguen por dimensiones y no por el
-  nombre del archivo (000000.dcm / 000001.dcm).
-- En la mamografía completa la lesión ocupa una fracción muy pequeña de la
-  imagen: al reducir a 224x224 quedaría de unos 20 píxeles de ancho (estimación
-  aproximada a partir de la máscara observada).
-- Las mamografías completas traen texto grabado en la imagen (por ejemplo
-  "LCC", "LMLO" y números), que un modelo podría aprender en lugar de la lesión.
+- Cada lesión tiene una mamografía completa (1 archivo) y una serie ROI con recorte y
+  máscara juntos (2 archivos). Por eso 167 archivos no eran 59 lesiones: 167 = 54 series de
+  2 archivos + 59 series de 1 archivo.
+- 6 archivos pesan 0 bytes y no tienen cabecera DICM (probablemente una descarga o copia
+  interrumpida). Con `force=True` se leían sin error como "desconocido" y, al deduplicar por
+  (series_uid, sop_uid), se fusionaban en una sola fila y parecían 5 duplicados. No lo eran.
+- Los 617 archivos válidos tienen todos cabecera DICM: `force=True` no era necesario, y
+  conviene evitarlo para que un archivo malo no pase sin avisar.
+- Dos lesiones (P_00408_RIGHT_MLO_1 y P_00413_LEFT_MLO_1) tienen un solo archivo ROI.
+- Con la partición se comprobó que hay 1 paciente con lesiones de ambas clases.
 
-**Dificultad:** No se puede saber cuál archivo es recorte y cuál es máscara
-por el nombre, y el orden cambia entre masas y calcificaciones. [Añadir
-cualquier otro problema real: memoria, rutas largas, tiempos de lectura, etc.]
+**Dificultad:**
+- El cruce por carpeta fallaba (0 coincidencias) por la estructura plana de IDC.
+- El criterio de cruce laxo marcaba como disponibles lesiones sin recorte, y varias lesiones
+  comparten mamografía, así que contaba de más. Pasé a un criterio estricto.
+- El conjunto de entrenamiento descargado era pequeño (108 lesiones, 54 pacientes) y la
+  prevalencia de malignas difería entre train (48 %) y test (32 %).
+- Los scripts no se encontraban en Colab (otro entorno distinto de mi PC) y un archivo se
+  guardaba en la carpeta temporal en vez de en Drive.
 
 **Alternativas consideradas:**
-- Usar la mamografía completa redimensionada (la lesión se vuelve diminuta y
-  hay texto grabado en la imagen).
-- Recortar la mamografía alrededor de la máscara con un margen.
-- Usar directamente el recorte ROI que ya trae el dataset.
+- **A:** descargar más lesiones de train y conservar la partición oficial.
+- **B:** juntar lo descargado y repartirlo por paciente.
+- **Semilla:** conservar la 42 o buscar otra con las particiones más equilibradas.
 
-**Decisión:** Usar el recorte ROI como entrada del modelo e identificar recorte
-y máscara por sus dimensiones (la máscara es la de mayor área). Consecuencia:
-el prototipo clasifica recortes de lesiones, no mamografías completas, y la
-interfaz Gradio recibirá un recorte. Se documentará como limitación.
+**Decisiones:**
+1. **Criterio de lesión disponible:** solo si tiene su serie ROI completa (2 archivos) y el
+   menor de los dos, por área, es el recorte (la máscara es la de mayor área).
+2. **Archivos vacíos:** excluidos del índice y registrados, sin volver a descargarlos.
+   Cifras finales: 617 archivos válidos, 417 series, 211 lesiones completas.
+3. **Opción B:** juntar las 211 lesiones y repartirlas por paciente con `StratifiedGroupKFold`
+   (semilla 42) en ~71 % / 14 % / 14 %, por [limitación de espacio y tiempo: confirmar].
+   Consecuencia: la partición ya no es la oficial.
+4. **Semilla:** antes de entrenar, fijé un criterio (validación y prueba con 12-17 % de las
+   lesiones y la menor diferencia de prevalencia respecto al total, 40,3 %) y escaneé 200
+   semillas, de las cuales 113 cumplían el tamaño. La mejor era la 11 (desbalance 2,0 puntos);
+   la 42 tiene 13,3. Ejecuté por error la semilla 12 (no salió del escaneo, desbalance 20,6 y
+   tamaños bajo el criterio) y la descarté sin entrenar. Decidí **mantener la semilla 42 por
+   simplicidad**. La elección no usa ningún resultado de modelo.
 
-**Evidencia:** notebooks/01_lectura_imagenes.ipynb, commit [hash], capturas de
-las imágenes leídas.
+**Resultado de la partición (semilla 42):**
+
+| Partición | Lesiones | Pacientes | Malignas | Benignas | % malignas |
+|---|---|---|---|---|---|
+| train | 146 | 74 | 64 | 82 | 43,8 % |
+| val | 37 | 16 | 10 | 27 | 27,0 % |
+| test | 28 | 15 | 11 | 17 | 39,3 % |
+
+Pacientes solapados: 0 entre train y val, 0 entre train y test y 0 entre val y test.
+
+**Limitaciones de esta decisión:**
+- La validación tiene 27 % de malignas frente a 43,8 % en train: el umbral que elija con
+  ella puede no transferirse a la prueba. Lo discutiré en el informe y revisaré la
+  estabilidad del umbral.
+- Con 10 y 11 malignas en validación y prueba, la sensibilidad es muy inestable. Por ejemplo,
+  detectar 8 de 11 da un intervalo de confianza del 95 % de aproximadamente 43 % a 90 %.
+  Reportaré intervalos de confianza.
+
+**Evidencia:** commits [hashes], `particiones/reporte_particion.txt`, `src/01_particion.py`,
+`weka/capturas/`, notebook de indexación, [escaneo_semillas.csv si lo guardaste].
 
 **Contribución individual:** [Describir con precisión qué hice yo.]
 
 **Pendiente:**
-- Verificar que la máscara de una lesión coincide en dimensiones con su
-  mamografía completa.
-- Abrir los CSV en Weka y guardar las capturas del balance de clases.
-- Script de partición por paciente con verificación de solapamiento.
-- Completar requirements.txt y los datos del README (versión de Weka, entorno,
-  subconjunto).
+- EDA de imágenes: resolución de los recortes, ejemplos por clase y duplicados.
+- Weka: captura del test y `.arff` sin rutas.
+- `requirements.txt`, notebook depurado y guardado en GitHub.
+- Preprocesamiento (224x224, normalización, aumentos solo en train) y línea base.
 
 ---
 
