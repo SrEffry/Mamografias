@@ -173,22 +173,60 @@ Pacientes solapados: 0 entre train y val, 0 entre train y test y 0 entre val y t
 
 ---
 
-## [DD/MM/2026] - Día 3
+## 17/11/2026 - Día 3
 
-**Actividad:**
+> Borrador: lo que queda entre corchetes lo completa cada integrante. Borrar esta nota al terminar.
+
+**Actividad:** EDA de las imágenes, verificación de la partición, limpieza del repositorio y
+dependencias.
 
 **Qué hice:**
--
+- Verifiqué que los CSV de `particiones/` son los de la semilla 42 (146 / 37 / 28 lesiones, 0
+  pacientes solapados) y no los de la semilla 12 que se ejecutó por error el día 2. Coinciden.
+- Weka: subí al repositorio los `.arff` de `mass_train_limpio` y `mass_test_limpio`, que se
+  generaron el 16/11 quitando `patient_id` y las tres columnas de rutas (filtro
+  `Remove -R 1,12-14`), porque no son variables del problema. Conservan `assessment` solo para
+  el EDA; no se usa como predictor. [Captura del test: hecha / pendiente.]
+- EDA de los 211 recortes (`notebooks/03_eda_imagenes.ipynb`):
+  - Vistas del subconjunto: 104 CC y 107 MLO, con proporciones de clase parecidas en ambas.
+  - El `PatientID` del encabezado DICOM coincide con el `lesion_id` en los 211 recortes, y la
+    `SeriesDescription` de todos es `cropped images`. Con eso se comprueba que el cruce por UID de
+    serie y la regla del área eligieron el recorte y no la máscara.
+  - Los 211 son MONOCHROME2 de 16 bits y ninguno es constante.
+  - No hay duplicados por hash MD5 de los píxeles. Leer los 211 recortes sin errores sirve además
+    como prueba de integridad de los píxeles.
+  - Resolución: el alto mediano es 316,5 px en benignas y 341 px en malignas, y el ancho mediano
+    325 y 346 px. 38 recortes tienen algún lado menor de 224 px y 32 tienen una relación de
+    aspecto fuera de 0,8-1,25. La mediana de la relación es casi 1 en las dos clases.
+  - Los recortes malignos son algo más grandes en promedio (unos 375 px de alto frente a 340 en
+    benignas). Al llevar todos a 224x224 esa diferencia de tamaño absoluto deja de verse en la
+    entrada del modelo.
+  - Ejemplos por clase en `results/ejemplos_clases.png` (solo de entrenamiento).
+- Ordené el repositorio: los notebooks pasaron a `notebooks/` y el de lectura de imágenes se
+  renombró `01_lectura_imagenes`. Limpié `02_eda_particion` quitando las celdas obsoletas (cruce por
+  carpeta y por manifiestos, la lectura con `force=True` y las celdas `%%writefile`); la versión
+  anterior queda en el historial de Git. Subí los scripts de `src/`, las particiones de la semilla 42
+  y las capturas de Weka, que estaban solo en Drive.
+- Creé `requirements.txt` con las versiones de Colab y añadí `venv/` al `.gitignore`.
 
-**Dificultad:**
+**Dificultad:** Leer los 211 recortes desde Drive tardó unos 3 minutos, así que leer DICOM en
+cada época de entrenamiento no es viable. [Añadir cualquier otra dificultad real.]
 
 **Alternativas consideradas:**
+- Llevar el recorte a 224x224 estirándolo o rellenándolo primero a cuadrado.
+- Guardar los recortes preprocesados o leer el DICOM de Drive en cada época.
 
-**Decisión:**
+**Decisión:** La mayoría de los recortes son casi cuadrados, pero 32 de 211 tienen una relación
+de aspecto fuera de 0,8-1,25, así que se rellenan a cuadrado con ceros antes de redimensionar, para
+no deformar la forma de la masa. Los recortes se preprocesan una sola vez y se guardan como PNG en
+Drive, porque leer los DICOM tarda unos 3 minutos por pasada.
 
-**Evidencia:**
+**Evidencia:** `notebooks/03_eda_imagenes.ipynb`, `results/eda_imagenes_resolucion.png`,
+`results/ejemplos_clases.png`, `results/resumen_eda_imagenes.csv`, `weka/arff/`, commits [hash].
 
 **Contribución individual:**
+- Efren Suárez: [ ]
+- Kevin Martínez: [ ]
+- Iván González: [ ]
 
-**Pendiente:**
--
+**Pendiente:** preprocesamiento y primer entrenamiento.

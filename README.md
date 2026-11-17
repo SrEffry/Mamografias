@@ -5,7 +5,7 @@
 > Este prototipo NO diagnostica cáncer. La clasificación de una lesión con
 > diagnóstico patológico no equivale a diagnosticar a una paciente.
 
-**Autor:** Kevin Martinez Martinez - Iván González Ordosgoitia - Efren Suárez Negrete
+**Autores:** Kevin Martínez Martínez, Iván González Ordosgoitia y Efren Suárez Negrete
 **Repositorio:** https://github.com/SrEffry/Mamografias
 **Bitácora:** [BITACORA.md](BITACORA.md)
 
@@ -15,7 +15,8 @@
 |---|---|
 | Comprensión del problema, etiquetas e hipótesis | Hecho |
 | Datos: descarga, indexación, EDA tabular y partición por paciente | Hecho |
-| EDA de imágenes y preprocesamiento | [En curso / pendiente] |
+| EDA de imágenes | Hecho |
+| Preprocesamiento | Decidido, en curso |
 | Línea base y transferencia de aprendizaje | Pendiente |
 | Experimento controlado, errores y umbral | Pendiente |
 | Interfaz Gradio, informe y reproducibilidad | Pendiente |
@@ -120,7 +121,7 @@ modelo usa el recorte.
 | Del test oficial | 103 | 51 | 33 | 70 |
 | **Total** | **211** | **105** | **85** | **126** |
 
-Vistas CC/MLO del subconjunto: [completar].
+Vistas del subconjunto: 104 CC (61 benignas y 43 malignas) y 107 MLO (65 benignas y 42 malignas).
 
 ### Calidad de los datos y exclusiones
 
@@ -147,8 +148,16 @@ Vistas CC/MLO del subconjunto: [completar].
 - **`subtlety`** tiene 2 filas con valor 0 (la escala esperada es de 1 a 5);
   no se usa esa columna.
 - **Sin filas duplicadas** en los CSV.
-- **Resolución de los recortes:** [completar tras el EDA de imágenes].
-- **Duplicados de imagen:** [completar].
+- **Resolución de los recortes:** el alto mediano es 316,5 px en benignas y 341 px en malignas,
+  y el ancho mediano 325 y 346 px. Van de 132 a 839 px de alto y de 156 a 758 px de ancho. 38
+  recortes tienen algún lado menor de 224 px y se agrandan al redimensionar. La relación ancho/alto
+  tiene mediana cercana a 1 (1,04 en benignas y 1,03 en malignas), pero 32 de 211 quedan fuera de
+  0,8-1,25 (mínimo 0,51 y máximo 1,54). Ver `results/eda_imagenes_resolucion.png`.
+- **Calidad:** los 211 recortes son MONOCHROME2 de 16 bits (`uint16`) y ninguno es constante.
+- **Duplicados de imagen (hash MD5 de los píxeles):** ninguno.
+- **Integridad del cruce:** el `PatientID` del encabezado DICOM coincide con el `lesion_id` en
+  los 211 recortes, y la `SeriesDescription` de todos es `cropped images`. Con eso se comprueba
+  que la regla del área eligió el recorte y no la máscara.
 - **Análisis exploratorio con Weka** (capturas en `weka/capturas/`) y con Python
   (`notebooks/`).
 
@@ -173,18 +182,27 @@ validar con rigor. Se pierde la comparabilidad con la partición oficial.
 - El conjunto de prueba **no se usa** para elegir hiperparámetros ni umbral.
 - Script: `src/01_particion.py` (modo `propio`). Resultados en `particiones/`.
 
-### Preprocesamiento
+### Preprocesamiento (decidido con el EDA de imágenes; se implementa en el notebook 04)
 
-[Completar: lectura DICOM del recorte, normalización, redimensionamiento a 224x224,
-conversión a 3 canales. Aumentos moderados (flip, rotación leve) solo en entrenamiento;
-validación y prueba sin aumentos.]
+1. Lectura del recorte DICOM con `pydicom`, sin `force=True`. Todos los recortes son MONOCHROME2.
+2. Normalización min-max por imagen a [0, 1], porque el rango de intensidades cambia entre
+   imágenes.
+3. Relleno a cuadrado con ceros y redimensionado a 224x224 con `INTER_AREA`. La mayoría de los
+   recortes son casi cuadrados, pero 32 de 211 tienen una relación de aspecto fuera de 0,8-1,25
+   y, si se estiraran, la forma de esas masas se deformaría. En el caso extremo, con relación
+   0,51, un eje se estiraría casi al doble.
+4. Se guardan una sola vez como PNG en Drive, porque leer los 211 DICOM tarda unos 3 minutos y no
+   es viable hacerlo en cada época.
+
+Aumentos moderados (volteo horizontal y rotación leve) solo en entrenamiento; validación y prueba
+sin aumentos.
 
 ### Herramientas
 
 - **Weka [versión: ___]** (Help → About): análisis exploratorio de los CSV de metadatos.
-- **Python en Google Colab [versión: ___]**, con los archivos en Google Drive:
+- **Python 3.13 en Google Colab**, con los archivos en Google Drive:
   lectura de DICOM, partición, preprocesamiento, modelado, evaluación y Gradio.
-- **Librerías:** ver `requirements.txt`. **GPU:** [___]
+- **Librerías:** ver `requirements.txt`. **GPU de Colab:** [___]
 
 ## 4. Modelado
 
@@ -199,20 +217,10 @@ validación y prueba sin aumentos.]
 
 [Completar con resultados en validación y, al final, en prueba.]
 
-| Métrica | Validación | Prueba |
-|---|---|---|
-| Sensibilidad (malignidad) | [ ] | [ ] |
-| Especificidad | [ ] | [ ] |
-| Precisión | [ ] | [ ] |
-| F1 | [ ] | [ ] |
-| ROC-AUC | [ ] | [ ] |
-
 - **Intervalos de confianza:** con 10 malignas en validación y 11 en prueba, las
   métricas son muy inestables. Se reportarán intervalos de confianza (por ejemplo
   de Wilson). Como referencia, detectar 8 de 11 malignas da un intervalo del 95 % de
   aproximadamente 43 % a 90 %.
-- **Umbral elegido (con validación):** [ ]
-- **Matriz de confusión, falsos negativos y falsos positivos:** [ver results/]
 
 La salida del modelo es una **puntuación**, no una probabilidad clínica calibrada.
 
@@ -254,7 +262,7 @@ Mamografias/
 ├── particiones/     train.csv, val.csv, test.csv, reporte_particion.txt,
 │                    lesiones_descargadas.txt
 ├── src/             01_particion.py, 00_seleccion_subconjunto.py
-├── notebooks/       EDA, índice de DICOM, experimentos, demo
+├── notebooks/       01_lectura_imagenes, 02_eda_particion, 03_eda_imagenes
 ├── weka/
 │   ├── arff/
 │   └── capturas/
@@ -276,14 +284,15 @@ No se versionan los DICOM ni los archivos con rutas de Google Drive
    Con los CSV se obtienen los `SeriesInstanceUID` de sus series ROI
    (tercer componente de las rutas `cropped image file path` y `ROI mask file path`),
    que se descargan de IDC.
-5. Indexar los DICOM leyendo el encabezado (notebook `[nombre]`) y generar
+5. Indexar los DICOM leyendo el encabezado (notebook `02_eda_particion`) y generar
    `lesiones_descargadas.txt`.
 6. Partición por paciente (semilla 42):
    ```
    python src/01_particion.py --data data --out particiones --modo propio \
        --disponibles particiones/lesiones_descargadas.txt
    ```
-7. [Preprocesamiento, entrenamiento, evaluación e interfaz: completar.]
+7. EDA de imágenes: `notebooks/03_eda_imagenes.ipynb` en Colab.
+8. [Preprocesamiento, entrenamiento, evaluación e interfaz: completar.]
 
 ## 10. Referencias
 
