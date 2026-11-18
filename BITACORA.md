@@ -230,3 +230,107 @@ Drive, porque leer los DICOM tarda unos 3 minutos por pasada.
 - Iván González: [ ]
 
 **Pendiente:** preprocesamiento y primer entrenamiento.
+
+---
+
+## 17/11/2026 - Días 4-5: preprocesamiento y línea base
+
+> Los días 3 a 7 se trabajaron el mismo 17/11.
+
+**Actividad:** Preprocesamiento de los recortes y entrenamiento de la línea base.
+
+**Qué hice:**
+- Preprocesé los 211 recortes con `notebooks/04_preprocesamiento.ipynb` y las funciones de
+  `src/modelo_utils.py`: lectura del DICOM sin `force=True`, normalización min-max por imagen,
+  relleno a cuadrado, redimensionado a 224x224 con `INTER_AREA` y guardado como PNG de 8 bits en
+  Drive. Se generaron los 211 PNG sin errores.
+- Entrené la línea base en `notebooks/05_entrenamiento.ipynb`: CNN de 4 bloques
+  Conv-BN-ReLU-MaxPool con dropout 0,5 y 98.049 parámetros, semilla 42, batch 16, Adam, lr 1e-3,
+  30 épocas, con aumentos solo en entrenamiento (volteo horizontal y rotación de ±10°) y guardando la
+  época con mayor ROC-AUC de validación. Tardó 73,9 s en una GPU Tesla T4.
+- Resultado en validación: AUC 0,648 (IC 95 % 0,47-0,82), mejor época 3. Con umbral 0,5,
+  sensibilidad 0,10 (1 de 10 malignas) y especificidad 0,963 (26 de 27 benignas).
+
+**Interpretación:** la línea base casi no aprende con esta configuración. El AUC de validación
+osciló entre 0,46 y 0,65 y el de entrenamiento no pasó de 0,77. Al pasar el umbral de 0,4 a 0,3 la
+especificidad cae de 0,778 a 0,037, o sea que casi todas sus puntuaciones quedan en un rango muy
+estrecho.
+
+**Dificultad:** [Añadir una dificultad real si la hubo.]
+
+**Alternativas consideradas:** usar `pos_weight` en la pérdida o no usarlo.
+
+**Decisión:** no usar `pos_weight`, porque en entrenamiento hay 64 malignas y 82 benignas (43,8 %
+de malignas), que es un desbalance leve. No se cambiaron épocas ni learning rate después de ver los
+resultados; cualquier cambio se hará como experimento controlado en los días 8 a 11.
+
+**Evidencia:** `src/modelo_utils.py`, `notebooks/04_preprocesamiento.ipynb`,
+`notebooks/05_entrenamiento.ipynb`, `results/preprocesamiento_ejemplos.png`,
+`results/historial_baseline.csv`, `results/registro_experimentos.csv`, commits [hash].
+
+**Contribución individual:**
+- Efren Suárez: [ ]
+- Kevin Martínez: [ ]
+- Iván González: [ ]
+
+---
+
+## 17/11/2026 - Días 6-7: transferencia de aprendizaje, errores y preparación del control
+
+**Actividad:** Entrenamiento preliminar con ResNet18, análisis de errores en validación.
+
+**Qué hice:**
+- Entrené ResNet18 preentrenada en ImageNet, con la capa final de 1 salida (11.177.025
+  parámetros), con la misma semilla, batch, aumentos y partición que la línea base, Adam, lr 1e-4 y
+  20 épocas. Tardó 36,0 s. Mejor época: 9.
+- Resultados en validación con umbral 0,5 (`results/metricas_val.csv`):
+
+  | Modelo | AUC (IC 95 %) | Sensibilidad (IC 95 %) | Especificidad (IC 95 %) | Precisión | F1 |
+  |---|---|---|---|---|---|
+  | Línea base | 0,648 (0,47-0,82) | 0,10 (0,02-0,40) | 0,963 (0,82-0,99) | 0,500 | 0,167 |
+  | ResNet18 | 0,819 (0,63-0,99) | 0,60 (0,31-0,83) | 0,704 (0,52-0,84) | 0,429 | 0,500 |
+
+- Efecto del umbral en validación con ResNet18 (`results/umbrales_val_resnet18.csv`):
+
+  | Umbral | TP | FN | TN | FP | Sensibilidad | Especificidad |
+  |---|---|---|---|---|---|---|
+  | 0,5 | 6 | 4 | 19 | 8 | 0,60 | 0,704 |
+  | 0,4 | 6 | 4 | 19 | 8 | 0,60 | 0,704 |
+  | 0,3 | 7 | 3 | 18 | 9 | 0,70 | 0,667 |
+  | 0,2 | 8 | 2 | 17 | 10 | 0,80 | 0,630 |
+
+- Falsos negativos de ResNet18 con umbral 0,5: P_00198_LEFT_CC_1 (0,129), P_00396_LEFT_MLO_1
+  (0,150), P_00198_LEFT_MLO_1 (0,246) y P_00324_RIGHT_CC_1 (0,357). Hay 8 falsos positivos, con
+  puntuaciones entre 0,529 y 0,902.
+
+**Interpretación preliminar:**
+- ResNet18 aprende el conjunto de entrenamiento casi por completo (AUC de entrenamiento por encima
+  de 0,99 desde la época 8), mientras la pérdida de validación sube después de la época 10. Eso
+  indica sobreajuste, y por eso se usa el checkpoint de la época 9.
+- **H1:** la diferencia de AUC es 0,171, mayor que 0,05, pero los intervalos se solapan. Con 37
+  lesiones no se puede afirmar todavía que la diferencia sea real.
+- **H2:** con umbral 0,5, la sensibilidad es menor que la especificidad en los dos modelos, y al
+  bajar el umbral la sensibilidad de ResNet18 sube y la especificidad baja, como se esperaba.
+  Todavía no se elige umbral; eso es de los días 8 a 11.
+- Dos de los cuatro falsos negativos son las vistas CC y MLO de la misma paciente (P_00198), y los
+  falsos positivos también se repiten por paciente. Los errores no son independientes, lo que hace
+  la muestra efectiva aún más pequeña.
+
+**Dificultad:**
+- [Añadir otra dificultad real si la hubo.]
+
+**Decisión:** usar el checkpoint de la mejor época por AUC de validación y no el de la última, por
+el sobreajuste que muestran las curvas.
+
+**Evidencia:** `notebooks/05_entrenamiento.ipynb`, `results/curvas_entrenamiento.png`,
+`results/matriz_confusion_resnet18_val.png`, `results/errores_resnet18_val.png`,
+`results/pred_val_resnet18.csv`, commits [hash].
+
+**Contribución individual:**
+- Efren Suárez: [ ]
+- Kevin Martínez: [ ]
+- Iván González: [ ]
+
+**Pendiente:** preparar y ensayar la demostración del control del día 7. Días 8-11:
+experimento controlado cambiando una sola decisión, análisis de los falsos negativos y selección
+del umbral con validación.
