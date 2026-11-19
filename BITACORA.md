@@ -277,7 +277,7 @@ resultados; cualquier cambio se hará como experimento controlado en los días 8
 
 ## 17/11/2026 - Días 6-7: transferencia de aprendizaje, errores y preparación del control
 
-**Actividad:** Entrenamiento preliminar con ResNet18, análisis de errores en validación.
+**Actividad:** Entrenamiento preliminar con ResNet18, análisis de errores en validación y preparación de la demostración.
 
 **Qué hice:**
 - Entrené ResNet18 preentrenada en ImageNet, con la capa final de 1 salida (11.177.025
@@ -302,6 +302,10 @@ resultados; cualquier cambio se hará como experimento controlado en los días 8
 - Falsos negativos de ResNet18 con umbral 0,5: P_00198_LEFT_CC_1 (0,129), P_00396_LEFT_MLO_1
   (0,150), P_00198_LEFT_MLO_1 (0,246) y P_00324_RIGHT_CC_1 (0,357). Hay 8 falsos positivos, con
   puntuaciones entre 0,529 y 0,902.
+- Preparé `notebooks/demo_dia7.ipynb`, con una sección por cada punto del control, y lo ejecuté
+  de arriba abajo sin errores: 0 pacientes compartidos entre particiones, 10 de 10 identificadores
+  revisados coinciden con el `PatientID` del DICOM y aparecen los 4 falsos negativos. Ensayo con
+  cronómetro: [__] minutos.
 
 **Interpretación preliminar:**
 - ResNet18 aprende el conjunto de entrenamiento casi por completo (AUC de entrenamiento por encima
@@ -317,12 +321,15 @@ resultados; cualquier cambio se hará como experimento controlado en los días 8
   la muestra efectiva aún más pequeña.
 
 **Dificultad:**
+- Ejecuté la demo antes del notebook 04 y falló con `FileNotFoundError`, porque los PNG de
+  `procesadas_224/` todavía no existían. Lo solucioné ejecutando los notebooks en orden: 04, 05 y
+  después la demo.
 - [Añadir otra dificultad real si la hubo.]
 
 **Decisión:** usar el checkpoint de la mejor época por AUC de validación y no el de la última, por
 el sobreajuste que muestran las curvas.
 
-**Evidencia:** `notebooks/05_entrenamiento.ipynb`, `results/curvas_entrenamiento.png`,
+**Evidencia:** `notebooks/05_entrenamiento.ipynb`, `notebooks/demo_dia7.ipynb`, `results/curvas_entrenamiento.png`,
 `results/matriz_confusion_resnet18_val.png`, `results/errores_resnet18_val.png`,
 `results/pred_val_resnet18.csv`, commits [hash].
 
@@ -331,6 +338,5 @@ el sobreajuste que muestran las curvas.
 - Kevin Martínez: [ ]
 - Iván González: [ ]
 
-**Pendiente:** preparar y ensayar la demostración del control del día 7. Días 8-11:
-experimento controlado cambiando una sola decisión, análisis de los falsos negativos y selección
-del umbral con validación.
+**Pendiente:** (días 8-11) experimento controlado cambiando una sola decisión, análisis de los falsos
+negativos y selección del umbral con validación.

@@ -15,9 +15,9 @@
 |---|---|
 | Comprensión del problema, etiquetas e hipótesis | Hecho |
 | Datos: descarga, indexación, EDA tabular y partición por paciente | Hecho |
-| EDA de imágenes | Hecho |
-| Preprocesamiento | Decidido, en curso |
-| Línea base y transferencia de aprendizaje | Pendiente |
+| EDA de imágenes y preprocesamiento | Hecho |
+| Línea base y transferencia de aprendizaje | Entrenamiento preliminar hecho |
+| Preparación del control del día 7 | Hecho |
 | Experimento controlado, errores y umbral | Pendiente |
 | Interfaz Gradio, informe y reproducibilidad | Pendiente |
 
@@ -182,45 +182,80 @@ validar con rigor. Se pierde la comparabilidad con la partición oficial.
 - El conjunto de prueba **no se usa** para elegir hiperparámetros ni umbral.
 - Script: `src/01_particion.py` (modo `propio`). Resultados en `particiones/`.
 
-### Preprocesamiento (decidido con el EDA de imágenes; se implementa en el notebook 04)
+### Preprocesamiento
 
-1. Lectura del recorte DICOM con `pydicom`, sin `force=True`. Todos los recortes son MONOCHROME2.
+Se hace una sola vez (`notebooks/04_preprocesamiento.ipynb`, función `preprocesar` de
+`src/modelo_utils.py`) y se guarda como PNG en Drive:
+
+1. Lectura del recorte DICOM con `pydicom`, sin `force=True`. Todos los recortes son MONOCHROME2;
+   el código invertiría uno MONOCHROME1, pero no hay ninguno.
 2. Normalización min-max por imagen a [0, 1], porque el rango de intensidades cambia entre
    imágenes.
 3. Relleno a cuadrado con ceros y redimensionado a 224x224 con `INTER_AREA`. La mayoría de los
    recortes son casi cuadrados, pero 32 de 211 tienen una relación de aspecto fuera de 0,8-1,25
    y, si se estiraran, la forma de esas masas se deformaría. En el caso extremo, con relación
    0,51, un eje se estiraría casi al doble.
-4. Se guardan una sola vez como PNG en Drive, porque leer los 211 DICOM tarda unos 3 minutos y no
-   es viable hacerlo en cada época.
+4. Guardado en PNG de 8 bits. Se pierde precisión frente a los bits originales del DICOM.
 
-Aumentos moderados (volteo horizontal y rotación leve) solo en entrenamiento; validación y prueba
-sin aumentos.
+Al cargar cada imagen se repite en 3 canales y se normaliza con la media y la desviación de
+ImageNet, igual para los dos modelos. Los aumentos son moderados y **solo en entrenamiento**:
+volteo horizontal (p = 0,5) y rotación aleatoria de ±10°. Validación y prueba no se alteran.
 
 ### Herramientas
 
 - **Weka [versión: ___]** (Help → About): análisis exploratorio de los CSV de metadatos.
 - **Python 3.13 en Google Colab**, con los archivos en Google Drive:
   lectura de DICOM, partición, preprocesamiento, modelado, evaluación y Gradio.
-- **Librerías:** ver `requirements.txt`. **GPU de Colab:** [___]
+- **Librerías:** ver `requirements.txt`. **GPU de Colab:** Tesla T4 (torch 2.14.1+cu130)
 
 ## 4. Modelado
 
 | Modelo | Descripción | Semilla | Épocas | Batch | Optimizador | LR | Tiempo |
 |---|---|---|---|---|---|---|---|
-| Línea base | [CNN pequeña] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| Transferencia | ResNet18 preentrenada | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
+| Línea base | CNN de 4 bloques Conv-BN-ReLU-MaxPool, dropout 0,5, 1 salida | 42 | 30 (mejor: 3) | 16 | Adam | 1e-3 | 73,9 s |
+| Transferencia | ResNet18 preentrenada en ImageNet, capa final de 1 salida | 42 | 20 (mejor: 9) | 16 | Adam | 1e-4 | 36,0 s |
+
+Pérdida `BCEWithLogitsLoss` sin `pos_weight`. En ambos se guarda la época con mayor ROC-AUC de
+validación. Registro completo en `results/registro_experimentos.csv`.
 
 **Experimento controlado:** [una sola decisión modificada, por ejemplo con vs. sin aumentos]
 
 ## 5. Evaluación
 
-[Completar con resultados en validación y, al final, en prueba.]
+### Entrenamiento preliminar (validación: 37 lesiones, 10 malignas; umbral 0,5)
+
+| Métrica | Línea base | ResNet18 | Prueba |
+|---|---|---|---|
+| ROC-AUC (IC 95 %, bootstrap por paciente) | 0,648 (0,47-0,82) | 0,819 (0,63-0,99) | [al final] |
+| Sensibilidad (IC 95 % Wilson) | 0,10 (0,02-0,40), 1 de 10 | 0,60 (0,31-0,83), 6 de 10 | [ ] |
+| Especificidad (IC 95 % Wilson) | 0,963 (0,82-0,99), 26 de 27 | 0,704 (0,52-0,84), 19 de 27 | [ ] |
+| Precisión | 0,500 | 0,429 | [ ] |
+| F1 | 0,167 | 0,500 | [ ] |
+
+- **Línea base:** su mejor AUC de validación fue 0,648 en la época 3, y después osciló entre 0,46
+  y 0,65 sin mejorar. El AUC de entrenamiento tampoco pasó de 0,77, así que con esta
+  configuración la CNN pequeña aprende poco. Con umbral 0,5 detecta 1 de 10 malignas.
+- **ResNet18:** su mejor AUC de validación fue 0,819 en la época 9. Desde la época 8 el AUC de
+  entrenamiento está por encima de 0,99, mientras la pérdida de validación sube de 0,54 en las
+  épocas 9-10 a cerca de 1,0 al final. Es una señal de sobreajuste, y por eso se guarda la
+  época 9 y no la última.
+- **H1:** la diferencia de AUC es 0,171, mayor que el 0,05 de la hipótesis. Pero los intervalos se
+  solapan (0,47-0,82 y 0,63-0,99), así que con 37 lesiones esta corrida no basta para afirmar
+  que la diferencia es real.
+- **H2:** con umbral 0,5, la sensibilidad es menor que la especificidad en los dos modelos. En
+  ResNet18, al bajar el umbral a 0,2 la sensibilidad sube de 0,6 a 0,8 y la especificidad baja de
+  0,704 a 0,630. Entre 0,5 y 0,4 no cambia nada.
+- **Errores de ResNet18 (umbral 0,5):** hay 4 falsos negativos, de los cuales 2 son las vistas CC
+  y MLO de la paciente P_00198, y 8 falsos positivos, que se concentran en las pacientes P_00429,
+  P_00044 y P_00173 con 2 cada una. Los errores no son independientes entre sí.
 
 - **Intervalos de confianza:** con 10 malignas en validación y 11 en prueba, las
   métricas son muy inestables. Se reportarán intervalos de confianza (por ejemplo
   de Wilson). Como referencia, detectar 8 de 11 malignas da un intervalo del 95 % de
   aproximadamente 43 % a 90 %.
+- **Umbral elegido (con validación):** [ ]
+- **Matriz de confusión, falsos negativos y falsos positivos:** `results/matriz_confusion_resnet18_val.png`,
+  `results/errores_resnet18_val.png` y `results/pred_val_*.csv`.
 
 La salida del modelo es una **puntuación**, no una probabilidad clínica calibrada.
 
@@ -261,8 +296,9 @@ Mamografias/
 ├── data/            (ignorada por Git: CSV originales y DICOM)
 ├── particiones/     train.csv, val.csv, test.csv, reporte_particion.txt,
 │                    lesiones_descargadas.txt
-├── src/             01_particion.py, 00_seleccion_subconjunto.py
-├── notebooks/       01_lectura_imagenes, 02_eda_particion, 03_eda_imagenes
+├── src/             01_particion.py, 00_seleccion_subconjunto.py, modelo_utils.py
+├── notebooks/       01_lectura_imagenes, 02_eda_particion, 03_eda_imagenes,
+│                    04_preprocesamiento, 05_entrenamiento, demo_dia7
 ├── weka/
 │   ├── arff/
 │   └── capturas/
@@ -291,8 +327,11 @@ No se versionan los DICOM ni los archivos con rutas de Google Drive
    python src/01_particion.py --data data --out particiones --modo propio \
        --disponibles particiones/lesiones_descargadas.txt
    ```
-7. EDA de imágenes: `notebooks/03_eda_imagenes.ipynb` en Colab.
-8. [Preprocesamiento, entrenamiento, evaluación e interfaz: completar.]
+7. Copiar `src/modelo_utils.py` a la carpeta `src` de Drive y ejecutar en Colab, en orden,
+   `03_eda_imagenes`, `04_preprocesamiento` y `05_entrenamiento` (con GPU).
+8. `notebooks/demo_dia7.ipynb` reúne la demostración del control del día 7 (requiere haber
+   ejecutado antes 04 y 05).
+9. [Evaluación final e interfaz: completar.]
 
 ## 10. Referencias
 
