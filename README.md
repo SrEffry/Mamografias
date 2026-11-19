@@ -1,10 +1,5 @@
 # Clasificación de lesiones mamográficas benignas y malignas mediante aprendizaje profundo
 
-> **Prototipo académico; no apto para diagnóstico ni decisiones clínicas.**
-> Proyecto de clase de Aprendizaje Computacional (Ingeniería de Sistemas).
-> Este prototipo NO diagnostica cáncer. La clasificación de una lesión con
-> diagnóstico patológico no equivale a diagnosticar a una paciente.
-
 **Autores:** Kevin Martínez Martínez, Iván González Ordosgoitia y Efren Suárez Negrete
 **Repositorio:** https://github.com/SrEffry/Mamografias
 **Bitácora:** [BITACORA.md](BITACORA.md)
@@ -54,7 +49,7 @@ permita visualizar el resultado en una interfaz Gradio.
 | BENIGN_WITHOUT_CALLBACK | Benigna (0) |
 | MALIGNANT | Maligna (1) |
 
-### Hipótesis (escritas antes de experimentar)
+### Hipótesis
 
 **H1 (modelo).** Un modelo con transferencia de aprendizaje (ResNet18
 preentrenada en ImageNet) obtendrá un ROC-AUC en validación al menos 0.05
@@ -87,11 +82,11 @@ benigna) es más costoso que un falso positivo.
 - **Dataset:** CBIS-DDSM, tarea sobre **masas** (se descartaron las calcificaciones:
   son lesiones muy pequeñas que se pierden al reducir a 224x224).
 - **Metadatos (CSV):** `mass_case_description_train_set.csv` y
-  `mass_case_description_test_set.csv` [de TCIA: confirmar]
+  `mass_case_description_test_set.csv`
   https://www.cancerimagingarchive.net/collection/cbis-ddsm/
 - **Imágenes DICOM:** descargadas con manifiestos del NCI Imaging Data Commons (IDC),
-  en varias tandas. [Confirmar el procedimiento exacto.]
-- **Versión y licencia:** [completar según la página de TCIA/IDC]
+  en varias tandas.
+- **Versión y licencia:** 
 - **Origen de las etiquetas:** diagnóstico patológico por lesión, incluido en los CSV.
 
 Los CSV completos de masas tienen:
@@ -107,9 +102,7 @@ oficial y del test oficial no se solapan (comprobado en código).
 ### Subconjunto utilizado
 
 Por limitaciones de espacio y tiempo no se descargó el dataset completo.
-**Criterio de selección del subconjunto:** [describir cómo se eligieron los
-pacientes o lesiones descargados; si no fue aleatorio, decirlo: es una posible
-fuente de sesgo de selección].
+**Criterio de selección del subconjunto:** Para escoger el subconjunto nuestro principal foco de atencion fue Restnet18 y sus parametros de aceptacion de tamaño de imagen, para poder hacer un procesamientod de datos mas rapido, entonces las imagenes que eran mas afines a este modelo son las masas, las cuales pasaremos por un proceso de recorte.  
 
 Una lesión se considera **disponible** solo si se tiene su **serie ROI completa**
 (recorte y máscara). Tener únicamente la mamografía completa no cuenta, porque el
@@ -203,7 +196,7 @@ volteo horizontal (p = 0,5) y rotación aleatoria de ±10°. Validación y prueb
 
 ### Herramientas
 
-- **Weka [versión: ___]** (Help → About): análisis exploratorio de los CSV de metadatos.
+- **Weka** (Help → About): análisis exploratorio de los CSV de metadatos.
 - **Python 3.13 en Google Colab**, con los archivos en Google Drive:
   lectura de DICOM, partición, preprocesamiento, modelado, evaluación y Gradio.
 - **Librerías:** ver `requirements.txt`. **GPU de Colab:** Tesla T4 (torch 2.14.1+cu130)
@@ -218,7 +211,6 @@ volteo horizontal (p = 0,5) y rotación aleatoria de ±10°. Validación y prueb
 Pérdida `BCEWithLogitsLoss` sin `pos_weight`. En ambos se guarda la época con mayor ROC-AUC de
 validación. Registro completo en `results/registro_experimentos.csv`.
 
-**Experimento controlado:** [una sola decisión modificada, por ejemplo con vs. sin aumentos]
 
 ## 5. Evaluación
 
@@ -260,11 +252,6 @@ validación. Registro completo en `results/registro_experimentos.csv`.
 La salida del modelo es una **puntuación**, no una probabilidad clínica calibrada.
 
 ## 6. Interfaz (Gradio)
-
-[Completar al terminar: cómo ejecutarla, formatos admitidos (por ejemplo PNG o JPG de
-un recorte de lesión), manejo de imágenes inválidas.]
-La interfaz muestra de forma visible: *«Prototipo académico; no apto para
-diagnóstico ni decisiones clínicas»*.
 
 ## 7. Limitaciones
 
