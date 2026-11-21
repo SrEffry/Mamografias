@@ -4,9 +4,6 @@
 **Asignatura:** Aprendizaje Computacional - Ingeniería de Sistemas
 **Repositorio:** https://github.com/SrEffry/Mamografias
 
-> Prototipo académico; no apto para diagnóstico ni decisiones clínicas.
-
----
 
 ## 15/11/2026 - Día 1
 
@@ -73,7 +70,6 @@ etiquetas, hipótesis y repositorio; primeras imágenes.
 
 **Evidencia:** README con mapeo e hipótesis, commits fechados, [capturas en weka/capturas/].
 
-**Contribución individual:** [Describir con precisión qué hice yo.]
 
 ---
 
@@ -163,7 +159,6 @@ Pacientes solapados: 0 entre train y val, 0 entre train y test y 0 entre val y t
 **Evidencia:** commits [hashes], `particiones/reporte_particion.txt`, `src/01_particion.py`,
 `weka/capturas/`, notebook de indexación, [escaneo_semillas.csv si lo guardaste].
 
-**Contribución individual:** [Describir con precisión qué hice yo.]
 
 **Pendiente:**
 - EDA de imágenes: resolución de los recortes, ejemplos por clase y duplicados.
@@ -174,8 +169,6 @@ Pacientes solapados: 0 entre train y val, 0 entre train y test y 0 entre val y t
 ---
 
 ## 17/11/2026 - Día 3
-
-> Borrador: lo que queda entre corchetes lo completa cada integrante. Borrar esta nota al terminar.
 
 **Actividad:** EDA de las imágenes, verificación de la partición, limpieza del repositorio y
 dependencias.
@@ -224,10 +217,6 @@ Drive, porque leer los DICOM tarda unos 3 minutos por pasada.
 **Evidencia:** `notebooks/03_eda_imagenes.ipynb`, `results/eda_imagenes_resolucion.png`,
 `results/ejemplos_clases.png`, `results/resumen_eda_imagenes.csv`, `weka/arff/`, commits [hash].
 
-**Contribución individual:**
-- Efren Suárez: [ ]
-- Kevin Martínez: [ ]
-- Iván González: [ ]
 
 **Pendiente:** preprocesamiento y primer entrenamiento.
 
@@ -268,10 +257,6 @@ resultados; cualquier cambio se hará como experimento controlado en los días 8
 `notebooks/05_entrenamiento.ipynb`, `results/preprocesamiento_ejemplos.png`,
 `results/historial_baseline.csv`, `results/registro_experimentos.csv`, commits [hash].
 
-**Contribución individual:**
-- Efren Suárez: [ ]
-- Kevin Martínez: [ ]
-- Iván González: [ ]
 
 ---
 
@@ -333,10 +318,6 @@ el sobreajuste que muestran las curvas.
 `results/matriz_confusion_resnet18_val.png`, `results/errores_resnet18_val.png`,
 `results/pred_val_resnet18.csv`, commits [hash].
 
-**Contribución individual:**
-- Efren Suárez: [ ]
-- Kevin Martínez: [ ]
-- Iván González: [ ]
 
 **Pendiente:** (días 8-11) experimento controlado cambiando una sola decisión, análisis de los falsos
 negativos y selección del umbral con validación.
