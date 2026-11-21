@@ -1,0 +1,7 @@
+condicion,semilla,mejor_epoca,auc_train,auc_val,auc_val_ic95,tiempo_s
+con_aumentos,42,9,0.997,0.819,0.63-0.99,71.2
+con_aumentos,7,14,1.0,0.848,0.69-0.98,41.9
+con_aumentos,123,10,0.996,0.796,0.52-0.97,45.7
+sin_aumentos,42,4,1.0,0.881,0.72-1.00,38.5
+sin_aumentos,7,10,1.0,0.844,0.71-0.97,38.9
+sin_aumentos,123,14,1.0,0.852,0.69-0.98,40.7

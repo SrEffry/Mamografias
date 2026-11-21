@@ -1,0 +1,3 @@
+condicion,auc_val_media,auc_val_min,auc_val_max,auc_train_media,mejor_epoca_media,brecha_train_val
+con_aumentos,0.821,0.796,0.848,0.998,11.0,0.177
+sin_aumentos,0.859,0.844,0.881,1.0,9.333,0.141

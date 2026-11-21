@@ -1,0 +1,12 @@
+{
+ "modelo": "resnet18",
+ "condicion": "sin_aumentos",
+ "flip": false,
+ "rotacion": 0,
+ "semilla": 42,
+ "ckpt": "exp_sin_aumentos_s42.pt",
+ "mejor_epoca": 4,
+ "auc_val": 0.881,
+ "auc_val_ic95": "0.72-1.00",
+ "fecha": "2026-11-21 22:11"
+}

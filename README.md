@@ -16,10 +16,11 @@
 | Comprensión del problema, etiquetas e hipótesis | Hecho |
 | Datos: descarga, indexación, EDA tabular y partición por paciente | Hecho |
 | EDA de imágenes y preprocesamiento | Hecho |
-| Línea base y transferencia de aprendizaje | Entrenamiento preliminar hecho |
-| Preparación del control del día 7 | Hecho |
-| Experimento controlado, errores y umbral | Pendiente |
-| Interfaz Gradio, informe y reproducibilidad | Pendiente |
+| Línea base y transferencia de aprendizaje | Hecho |
+| Experimento controlado, errores y umbral | En curso: experimento hecho |
+| Evaluación final en prueba (una sola vez) | Pendiente |
+| Interfaz Gradio | Pendiente |
+| Informe | Pendiente |
 
 ---
 
@@ -204,7 +205,7 @@ volteo horizontal (p = 0,5) y rotación aleatoria de ±10°. Validación y prueb
 ### Herramientas
 
 - **Weka [versión: ___]** (Help → About): análisis exploratorio de los CSV de metadatos.
-- **Python 3.13 en Google Colab**, con los archivos en Google Drive:
+- **Python en Google Colab [versión: ___]**, con los archivos en Google Drive:
   lectura de DICOM, partición, preprocesamiento, modelado, evaluación y Gradio.
 - **Librerías:** ver `requirements.txt`. **GPU de Colab:** Tesla T4 (torch 2.14.1+cu130)
 
@@ -218,19 +219,44 @@ volteo horizontal (p = 0,5) y rotación aleatoria de ±10°. Validación y prueb
 Pérdida `BCEWithLogitsLoss` sin `pos_weight`. En ambos se guarda la época con mayor ROC-AUC de
 validación. Registro completo en `results/registro_experimentos.csv`.
 
-**Experimento controlado:** [una sola decisión modificada, por ejemplo con vs. sin aumentos]
+### Experimento controlado: con y sin aumentos de datos
+
+`notebooks/06_experimento.ipynb`. Se cambió **una sola decisión**, los aumentos de
+entrenamiento (volteo horizontal y rotación de ±10° frente a ninguno), y se dejó fijo todo lo
+demás: ResNet18, lr 1e-4, 20 épocas, batch 16, la partición de la semilla 42 y el
+preprocesamiento. Cada condición se entrenó con 3 semillas de entrenamiento (42, 7 y 123) para
+ver cuánto varía el AUC solo por el azar del entrenamiento. La regla de decisión se fijó antes de
+ejecutar: quitar los aumentos solo si subía el AUC medio de validación en al menos 0,02.
+
+| Condición | AUC val. semilla 42 | Semilla 7 | Semilla 123 | Media | AUC train medio (mejor época) |
+|---|---|---|---|---|---|
+| Con aumentos | 0,819 | 0,848 | 0,796 | 0,821 | 0,998 |
+| Sin aumentos | 0,881 | 0,844 | 0,852 | 0,859 | 1,000 |
+
+- Sin aumentos la media fue 0,038 mayor, así que por la regla se eligió **sin aumentos**. El
+  modelo final es el de la semilla 42 sin aumentos (mejor época 4, AUC de validación 0,881).
+- Los rangos se solapan (con aumentos llega a 0,848 y sin aumentos baja a 0,844), y la
+  variación entre semillas de una misma condición, de hasta 0,05, es parecida a la diferencia
+  entre condiciones. Con 37 lesiones de validación no se puede afirmar que quitar los aumentos
+  mejore el modelo; solo que no lo empeoró en esta validación.
+- En las dos condiciones el AUC de entrenamiento llega a casi 1, así que los aumentos
+  moderados no evitaron el sobreajuste. Sin aumentos llega a 1 algunas épocas antes.
+- La corrida con aumentos y semilla 42 reprodujo exactamente las puntuaciones del notebook 05
+  (diferencia máxima 0,0).
+- Elegir el mejor de 6 modelos por su AUC de validación hace que 0,881 sea una estimación
+  optimista; por eso la prueba se evalúa aparte.
 
 ## 5. Evaluación
 
 ### Entrenamiento preliminar (validación: 37 lesiones, 10 malignas; umbral 0,5)
 
-| Métrica | Línea base | ResNet18 | Prueba |
-|---|---|---|---|
-| ROC-AUC (IC 95 %, bootstrap por paciente) | 0,648 (0,47-0,82) | 0,819 (0,63-0,99) | [al final] |
-| Sensibilidad (IC 95 % Wilson) | 0,10 (0,02-0,40), 1 de 10 | 0,60 (0,31-0,83), 6 de 10 | [ ] |
-| Especificidad (IC 95 % Wilson) | 0,963 (0,82-0,99), 26 de 27 | 0,704 (0,52-0,84), 19 de 27 | [ ] |
-| Precisión | 0,500 | 0,429 | [ ] |
-| F1 | 0,167 | 0,500 | [ ] |
+| Métrica | Línea base | ResNet18 |
+|---|---|---|
+| ROC-AUC (IC 95 %, bootstrap por paciente) | 0,648 (0,47-0,82) | 0,819 (0,63-0,99) |
+| Sensibilidad (IC 95 % Wilson) | 0,10 (0,02-0,40), 1 de 10 | 0,60 (0,31-0,83), 6 de 10 |
+| Especificidad (IC 95 % Wilson) | 0,963 (0,82-0,99), 26 de 27 | 0,704 (0,52-0,84), 19 de 27 |
+| Precisión | 0,500 | 0,429 |
+| F1 | 0,167 | 0,500 |
 
 - **Línea base:** su mejor AUC de validación fue 0,648 en la época 3, y después osciló entre 0,46
   y 0,65 sin mejorar. El AUC de entrenamiento tampoco pasó de 0,77, así que con esta
@@ -249,22 +275,20 @@ validación. Registro completo en `results/registro_experimentos.csv`.
   y MLO de la paciente P_00198, y 8 falsos positivos, que se concentran en las pacientes P_00429,
   P_00044 y P_00173 con 2 cada una. Los errores no son independientes entre sí.
 
-- **Intervalos de confianza:** con 10 malignas en validación y 11 en prueba, las
-  métricas son muy inestables. Se reportarán intervalos de confianza (por ejemplo
-  de Wilson). Como referencia, detectar 8 de 11 malignas da un intervalo del 95 % de
-  aproximadamente 43 % a 90 %.
-- **Umbral elegido (con validación):** [ ]
-- **Matriz de confusión, falsos negativos y falsos positivos:** `results/matriz_confusion_resnet18_val.png`,
-  `results/errores_resnet18_val.png` y `results/pred_val_*.csv`.
+### Selección del umbral (solo validación)
 
-La salida del modelo es una **puntuación**, no una probabilidad clínica calibrada.
+[Pendiente: días 8-11.]
+
+### Evaluación final en prueba
+
+[Pendiente: días 12-14.]
+
+La salida del modelo es una **puntuación**, no una probabilidad clínica calibrada: un 0,6 no
+significa 60 % de probabilidad de malignidad.
 
 ## 6. Interfaz (Gradio)
 
-[Completar al terminar: cómo ejecutarla, formatos admitidos (por ejemplo PNG o JPG de
-un recorte de lesión), manejo de imágenes inválidas.]
-La interfaz muestra de forma visible: *«Prototipo académico; no apto para
-diagnóstico ni decisiones clínicas»*.
+[Pendiente: días 12-14.]
 
 ## 7. Limitaciones
 
@@ -281,9 +305,11 @@ diagnóstico ni decisiones clínicas»*.
 - El modelo clasifica recortes de lesión, no mamografías completas.
 - Un paciente tiene lesiones de ambas clases, por lo que la estratificación por
   paciente no es perfecta.
-- Las imágenes de CBIS-DDSM son [mamografías de película digitalizadas: verificar en la
-  documentación del dataset], lo que puede limitar la generalización.
+- Las imágenes de CBIS-DDSM son mamografías de película escaneadas (DDSM, de finales de los años
+  90), lo que puede limitar la generalización a mamografías digitales actuales.
 - La salida del modelo es una puntuación, no una probabilidad clínica calibrada.
+- Los aumentos moderados no evitaron el sobreajuste: el AUC de entrenamiento llega a casi 1 en
+  todas las corridas.
 
 ## 8. Estructura del repositorio
 
@@ -296,18 +322,21 @@ Mamografias/
 ├── data/            (ignorada por Git: CSV originales y DICOM)
 ├── particiones/     train.csv, val.csv, test.csv, reporte_particion.txt,
 │                    lesiones_descargadas.txt
-├── src/             01_particion.py, 00_seleccion_subconjunto.py, modelo_utils.py
+├── src/             01_particion.py, 00_seleccion_subconjunto.py, modelo_utils.py,
+│                    app_gradio.py
 ├── notebooks/       01_lectura_imagenes, 02_eda_particion, 03_eda_imagenes,
-│                    04_preprocesamiento, 05_entrenamiento, demo_dia7
+│                    04_preprocesamiento, 05_entrenamiento, demo_dia7,
+│                    06_experimento, 07_umbral_errores, 08_prueba_final, 09_gradio
 ├── weka/
 │   ├── arff/
 │   └── capturas/
-├── results/         gráficos y métricas
+├── results/         gráficos, métricas, modelo_final.json, umbral_final.json
+│   └── prueba_final/  métricas y errores de la prueba, EVALUADA.txt
 └── informe/
 ```
 
-No se versionan los DICOM ni los archivos con rutas de Google Drive
-(`indice_dicom.csv`, `lesiones_disponibles.csv`, `archivos_ilegibles.csv`).
+No se versionan los DICOM, los PNG preprocesados, los checkpoints `.pt` ni los archivos con
+rutas de Google Drive (`indice_dicom.csv`, `lesiones_disponibles.csv`, `archivos_ilegibles.csv`).
 
 ## 9. Cómo reproducir
 
@@ -327,15 +356,20 @@ No se versionan los DICOM ni los archivos con rutas de Google Drive
    python src/01_particion.py --data data --out particiones --modo propio \
        --disponibles particiones/lesiones_descargadas.txt
    ```
-7. Copiar `src/modelo_utils.py` a la carpeta `src` de Drive y ejecutar en Colab, en orden,
-   `03_eda_imagenes`, `04_preprocesamiento` y `05_entrenamiento` (con GPU).
-8. `notebooks/demo_dia7.ipynb` reúne la demostración del control del día 7 (requiere haber
-   ejecutado antes 04 y 05).
-9. [Evaluación final e interfaz: completar.]
+7. Copiar `src/modelo_utils.py` y `src/app_gradio.py` a la carpeta `src` de Drive y ejecutar en
+   Colab con GPU, en orden: `03_eda_imagenes`, `04_preprocesamiento`, `05_entrenamiento`,
+   `06_experimento`, `07_umbral_errores`, `08_prueba_final` y `09_gradio`.
+8. `08_prueba_final` evalúa la prueba **una sola vez**: deja un candado
+   (`resultados/prueba_final/EVALUADA.txt`) y se detiene si se vuelve a ejecutar.
+9. En `09_gradio`, la interfaz se muestra dentro del notebook. El enlace público `gradio.live`
+   no se usa porque en Colab daba error 404 o 504.
+
+Tiempos aproximados en una Tesla T4: 05 unos 2 minutos, 06 unos 5 minutos, 07 a 09 menos de
+1 minuto cada uno.
 
 ## 10. Referencias
 
 - Lee, R. S. et al. *A curated mammography data set for use in computer-aided
-  detection and diagnosis research* (CBIS-DDSM). Scientific Data, 2017. [Verificar]
+  detection and diagnosis research* (CBIS-DDSM). Scientific Data, 4, 170177, 2017.
 - The Cancer Imaging Archive (TCIA): https://www.cancerimagingarchive.net/
 - NCI Imaging Data Commons (IDC): https://portal.imaging.datacommons.cancer.gov/
