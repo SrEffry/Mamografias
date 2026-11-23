@@ -379,5 +379,68 @@ concluyente.
 - Kevin Martínez: [ ]
 - Iván González: [ ]
 
+---
 
-**Pendiente (días 12-14):** evaluación de la prueba una sola vez, interfaz Gradio e informe.
+## 21/11/2026 - Días 12 a 14: prueba final e interfaz Gradio
+
+**Actividad:** Evaluación del conjunto de prueba una sola vez e interfaz Gradio.
+
+**Qué hice:**
+- Ejecuté `notebooks/08_prueba_final.ipynb` una sola vez, a las 22:16, con el modelo y el umbral
+  ya fijados. El notebook deja un candado en `results/prueba_final/EVALUADA.txt` y se detiene si se
+  vuelve a ejecutar.
+
+  | Modelo y umbral | AUC | Sensibilidad | Especificidad | TP | FN | TN | FP |
+  |---|---|---|---|---|---|---|---|
+  | ResNet18 final, umbral 0,3 | 0,706 entre 0,44 y 0,97 | 0,455, 5 de 11 | 0,824, 14 de 17 | 5 | 6 | 14 | 3 |
+  | ResNet18 final, umbral 0,5 | 0,706 | 0,273, 3 de 11 | 0,941, 16 de 17 | 3 | 8 | 16 | 1 |
+  | Línea base, umbral 0,5 | 0,754 entre 0,53 y 0,92 | 0,000 | 1,000 | 0 | 11 | 17 | 0 |
+
+- Hice la interfaz con `src/app_gradio.py` y `notebooks/09_gradio.ipynb`. Acepta PNG, JPG o
+  DICOM de un recorte, aplica el mismo preprocesamiento del entrenamiento y muestra la imagen
+  224x224, la clase, la puntuación y el aviso de prototipo académico. Probé 6 entradas inválidas
+  y las 6 se rechazan con su mensaje. Capturas en `results/gradio_prediccion.png` y
+  `results/gradio_rechazo.png`.
+
+**Hallazgos:**
+- Del mismo modelo con el mismo umbral, el AUC bajó de 0,881 en validación a 0,706 en prueba y la
+  sensibilidad de 0,80 a 0,455, mientras la especificidad quedó parecida. Era esperable porque la
+  época, la condición del experimento y el umbral se eligieron con la misma validación.
+- **H1 no se confirma:** en prueba la línea base tuvo más AUC que ResNet18, 0,754 frente a 0,706,
+  y los intervalos se solapan casi por completo. Con 28 lesiones no se puede decir cuál es mejor.
+- **H2 se cumple en la dirección esperada:** con 0,5 la sensibilidad es menor que la
+  especificidad, y al bajar a 0,3 la sensibilidad sube y la especificidad baja. Aun así, la
+  sensibilidad de 0,80 que se logró en validación no se alcanzó en prueba.
+- La línea base clasifica las 28 lesiones de prueba como benignas con umbral 0,5, aunque su AUC
+  es 0,754: ordena las lesiones, pero todas sus puntuaciones quedan por debajo de 0,5.
+- Los 6 falsos negativos de la prueba vienen de solo 3 pacientes: P_00074 con 3 lesiones,
+  P_00406 con 2 y P_00347 con 1.
+
+**Dificultades:**
+- El notebook 09 no encontraba `app_gradio.py` porque no estaba en la carpeta `src` de Drive, y
+  el `modelo_utils.py` de Drive era la versión anterior. Se subieron los dos archivos y se
+  reinició la sesión de Colab.
+- El enlace público de Gradio daba error 404 al relanzar la interfaz sobre una ya abierta y
+  después error 504. Lo resolví mostrando la interfaz dentro del notebook por el proxy de Colab,
+  con `ssr_mode=False` y cerrando antes los lanzamientos anteriores.
+- La imagen preprocesada se veía rota porque Gradio la servía como un archivo aparte que el proxy
+  de Colab no dejaba pasar. Lo resolví incrustando la imagen en la página.
+- Para la misma lesión, P_00023_RIGHT_CC_1, la interfaz daba 0,568 y el notebook 0,513. La causa
+  fue que la app volvía a normalizar con min-max los PNG que ya venían normalizados del notebook
+  04, y eso estiraba el contraste. Ahora un PNG o JPG se usa con sus valores de 8 bits y solo el
+  DICOM se normaliza con min-max. El notebook 09 comprueba que la app y el notebook den la misma
+  puntuación.
+
+**Decisión:** el umbral de la interfaz es el elegido con validación, 0,3, y la puntuación se
+muestra con el aviso de que no es una probabilidad clínica calibrada.
+
+**Evidencia:** `notebooks/08_prueba_final.ipynb`, `notebooks/09_gradio.ipynb`,
+`src/app_gradio.py`, `results/prueba_final/`, `results/gradio_prediccion.png`,
+`results/gradio_rechazo.png`, commits [hash].
+
+**Contribución individual:**
+- Efren Suárez: [ ]
+- Kevin Martínez: [ ]
+- Iván González: [ ]
+
+**Pendiente:** informe final de máximo 10 páginas y sustentación individual.

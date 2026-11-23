@@ -1,8 +1,8 @@
 """
 modelo_utils.py
-Funciones compartidas por los notebooks 04 (preprocesamiento), 05 (entrenamiento)
-y demo_dia7: preprocesar el recorte DICOM, Dataset de PyTorch, modelos, entrenamiento
-y métricas.
+Funciones compartidas por los notebooks 04 a 08, demo_dia7 y la app de Gradio
+(app_gradio.py): preprocesar el recorte DICOM, Dataset de PyTorch, modelos,
+entrenamiento y métricas.
 
 Prototipo académico; no apto para diagnóstico ni decisiones clínicas.
 La salida del modelo es una PUNTUACIÓN entre 0 y 1, no una probabilidad clínica calibrada.
@@ -81,12 +81,17 @@ def a_cuadrado(x, ajuste="pad"):
     return out
 
 
+def a_entrada(x, ajuste="pad", tam=TAM):
+    """Arreglo float en [0, 1] -> uint8 de tam x tam. Lo usan el notebook 04 y la app
+    de Gradio, así la interfaz aplica exactamente el mismo preprocesamiento."""
+    import cv2
+    x = cv2.resize(a_cuadrado(x, ajuste), (tam, tam), interpolation=cv2.INTER_AREA)
+    return np.clip(np.round(x * 255), 0, 255).astype(np.uint8)
+
+
 def preprocesar(ruta_dcm, ajuste="pad", tam=TAM):
     """DICOM -> arreglo uint8 de tam x tam (escala de grises)."""
-    import cv2
-    x = a_cuadrado(leer_recorte(ruta_dcm), ajuste)
-    x = cv2.resize(x, (tam, tam), interpolation=cv2.INTER_AREA)
-    return np.clip(np.round(x * 255), 0, 255).astype(np.uint8)
+    return a_entrada(leer_recorte(ruta_dcm), ajuste, tam)
 
 
 # --------------------------------------------------------------------------- #

@@ -19,7 +19,7 @@
 | Línea base y transferencia de aprendizaje | Hecho |
 | Experimento controlado, errores y umbral | Hecho |
 | Evaluación final en prueba (una sola vez) | Hecho |
-| Interfaz Gradio | Pendiente |
+| Interfaz Gradio | Hecho |
 | Informe | Pendiente |
 
 ---
@@ -330,7 +330,24 @@ significa 60 % de probabilidad de malignidad.
 
 ## 6. Interfaz (Gradio)
 
-[Pendiente: días 12-14.]
+- **Cómo ejecutarla:** `notebooks/09_gradio.ipynb` en Colab. Carga el modelo final
+  (`results/modelo_final.json`) y el umbral 0,3 (`results/umbral_final.json`) y muestra la
+  interfaz dentro del notebook. Código en `src/app_gradio.py`.
+- **Formatos admitidos:** PNG, JPG o DICOM (.dcm) del **recorte de una lesión** en escala de grises.
+  Un DICOM se normaliza min-max como en el notebook 04; un PNG o JPG se usa con sus valores de 8
+  bits. Después se rellena a cuadrado y se lleva a 224x224, igual que en el entrenamiento.
+- **Salida:** la imagen que ve el modelo, la clase (maligna si la puntuación es mayor o igual a
+  0,3), la puntuación y el aviso de que no es una probabilidad calibrada.
+- **Imágenes inválidas, en dos capas:** Gradio rechaza cualquier extensión distinta de PNG, JPG o
+  DICOM (`results/gradio_rechazo.png`), y `leer_entrada` rechaza con un mensaje los archivos
+  dañados, las imágenes constantes, las de menos de 32 px por lado, las de más de 2000 px
+  (mamografías completas o máscaras; los recortes miden como máximo 839 px) y las máscaras
+  binarias. Los 6 casos están probados en el notebook 09.
+- **Coherencia con el notebook:** para la misma lesión la interfaz debe dar la misma puntuación
+  que `pred_val_final.csv`; el notebook 09 lo comprueba con 5 lesiones de validación.
+
+La interfaz muestra de forma visible: *«Prototipo académico; no apto para
+diagnóstico ni decisiones clínicas»* (`results/gradio_prediccion.png`).
 
 ## 7. Limitaciones
 
