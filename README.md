@@ -17,7 +17,7 @@
 | Datos: descarga, indexación, EDA tabular y partición por paciente | Hecho |
 | EDA de imágenes y preprocesamiento | Hecho |
 | Línea base y transferencia de aprendizaje | Hecho |
-| Experimento controlado, errores y umbral | En curso: experimento hecho |
+| Experimento controlado, errores y umbral | Hecho |
 | Evaluación final en prueba (una sola vez) | Pendiente |
 | Interfaz Gradio | Pendiente |
 | Informe | Pendiente |
@@ -277,7 +277,23 @@ ejecutar: quitar los aumentos solo si subía el AUC medio de validación en al m
 
 ### Selección del umbral (solo validación)
 
-[Pendiente: días 8-11.]
+`notebooks/07_umbral_errores.ipynb`. Criterio fijado antes de ver la tabla: el umbral **más
+alto** de la rejilla 0,05-0,95 con **sensibilidad de validación de al menos 0,80**, porque un
+falso negativo es el error más costoso (H2) y, entre los umbrales que cumplen, el más alto deja
+menos falsos positivos.
+
+| Umbral | TP | FN | TN | FP | Sensibilidad | Especificidad |
+|---|---|---|---|---|---|---|
+| 0,25 | 9 | 1 | 20 | 7 | 0,90 | 0,741 |
+| **0,30 (elegido)** | **8** | **2** | **23** | **4** | **0,80 (0,49-0,94)** | **0,852 (0,68-0,94)** |
+| 0,35 | 6 | 4 | 25 | 2 | 0,60 | 0,926 |
+| 0,50 | 3 | 7 | 26 | 1 | 0,30 | 0,963 |
+
+- **Estabilidad:** al remuestrear pacientes de validación 1000 veces y aplicar la misma regla,
+  el umbral elegido va de 0,15 a 0,40 (percentiles 2,5 y 97,5). El 0,3 depende de muy pocos casos.
+- **Errores en validación con umbral 0,3:** 2 falsos negativos, que son las vistas CC y MLO de la
+  misma paciente (P_00324), y 4 falsos positivos de 4 pacientes distintas. Por las variables
+  del CSV no se puede sacar una conclusión: los grupos tienen de 0 a 3 errores.
 
 ### Evaluación final en prueba
 

@@ -4,6 +4,9 @@
 **Asignatura:** Aprendizaje Computacional - Ingeniería de Sistemas
 **Repositorio:** https://github.com/SrEffry/Mamografias
 
+> Prototipo académico; no apto para diagnóstico ni decisiones clínicas.
+
+---
 
 ## 15/11/2026 - Día 1
 
@@ -70,6 +73,7 @@ etiquetas, hipótesis y repositorio; primeras imágenes.
 
 **Evidencia:** README con mapeo e hipótesis, commits fechados, [capturas en weka/capturas/].
 
+**Contribución individual:** [Describir con precisión qué hice yo.]
 
 ---
 
@@ -159,6 +163,7 @@ Pacientes solapados: 0 entre train y val, 0 entre train y test y 0 entre val y t
 **Evidencia:** commits [hashes], `particiones/reporte_particion.txt`, `src/01_particion.py`,
 `weka/capturas/`, notebook de indexación, [escaneo_semillas.csv si lo guardaste].
 
+**Contribución individual:** [Describir con precisión qué hice yo.]
 
 **Pendiente:**
 - EDA de imágenes: resolución de los recortes, ejemplos por clase y duplicados.
@@ -169,6 +174,8 @@ Pacientes solapados: 0 entre train y val, 0 entre train y test y 0 entre val y t
 ---
 
 ## 17/11/2026 - Día 3
+
+> Borrador: lo que queda entre corchetes lo completa cada integrante. Borrar esta nota al terminar.
 
 **Actividad:** EDA de las imágenes, verificación de la partición, limpieza del repositorio y
 dependencias.
@@ -195,12 +202,9 @@ dependencias.
     benignas). Al llevar todos a 224x224 esa diferencia de tamaño absoluto deja de verse en la
     entrada del modelo.
   - Ejemplos por clase en `results/ejemplos_clases.png` (solo de entrenamiento).
-- Ordené el repositorio: los notebooks pasaron a `notebooks/` y el de lectura de imágenes se
-  renombró `01_lectura_imagenes`. Limpié `02_eda_particion` quitando las celdas obsoletas (cruce por
-  carpeta y por manifiestos, la lectura con `force=True` y las celdas `%%writefile`); la versión
-  anterior queda en el historial de Git. Subí los scripts de `src/`, las particiones de la semilla 42
-  y las capturas de Weka, que estaban solo en Drive.
-- Creé `requirements.txt` con las versiones de Colab y añadí `venv/` al `.gitignore`.
+- Limpié el notebook `02_eda_particion` [quitando las celdas obsoletas: cruce por carpeta,
+  manifiestos, la lectura con `force=True` y las celdas `%%writefile`] y creé `requirements.txt`
+  con las versiones de Colab.
 
 **Dificultad:** Leer los 211 recortes desde Drive tardó unos 3 minutos, así que leer DICOM en
 cada época de entrenamiento no es viable. [Añadir cualquier otra dificultad real.]
@@ -217,57 +221,35 @@ Drive, porque leer los DICOM tarda unos 3 minutos por pasada.
 **Evidencia:** `notebooks/03_eda_imagenes.ipynb`, `results/eda_imagenes_resolucion.png`,
 `results/ejemplos_clases.png`, `results/resumen_eda_imagenes.csv`, `weka/arff/`, commits [hash].
 
+**Contribución individual:**
+- Efren Suárez: [ ]
+- Kevin Martínez: [ ]
+- Iván González: [ ]
 
 **Pendiente:** preprocesamiento y primer entrenamiento.
 
 ---
 
-## 17/11/2026 - Días 4-5: preprocesamiento y línea base
+## 17/11/2026 - Días 4 a 7: preprocesamiento, entrenamiento preliminar y preparación del control
 
-> Los días 3 a 7 se trabajaron el mismo 17/11.
+> Los días 3 a 7 se trabajaron el mismo 17/11. Lo que queda entre corchetes lo completa cada
+> integrante.
 
-**Actividad:** Preprocesamiento de los recortes y entrenamiento de la línea base.
-
-**Qué hice:**
-- Preprocesé los 211 recortes con `notebooks/04_preprocesamiento.ipynb` y las funciones de
-  `src/modelo_utils.py`: lectura del DICOM sin `force=True`, normalización min-max por imagen,
-  relleno a cuadrado, redimensionado a 224x224 con `INTER_AREA` y guardado como PNG de 8 bits en
-  Drive. Se generaron los 211 PNG sin errores.
-- Entrené la línea base en `notebooks/05_entrenamiento.ipynb`: CNN de 4 bloques
-  Conv-BN-ReLU-MaxPool con dropout 0,5 y 98.049 parámetros, semilla 42, batch 16, Adam, lr 1e-3,
-  30 épocas, con aumentos solo en entrenamiento (volteo horizontal y rotación de ±10°) y guardando la
-  época con mayor ROC-AUC de validación. Tardó 73,9 s en una GPU Tesla T4.
-- Resultado en validación: AUC 0,648 (IC 95 % 0,47-0,82), mejor época 3. Con umbral 0,5,
-  sensibilidad 0,10 (1 de 10 malignas) y especificidad 0,963 (26 de 27 benignas).
-
-**Interpretación:** la línea base casi no aprende con esta configuración. El AUC de validación
-osciló entre 0,46 y 0,65 y el de entrenamiento no pasó de 0,77. Al pasar el umbral de 0,4 a 0,3 la
-especificidad cae de 0,778 a 0,037, o sea que casi todas sus puntuaciones quedan en un rango muy
-estrecho.
-
-**Dificultad:** [Añadir una dificultad real si la hubo.]
-
-**Alternativas consideradas:** usar `pos_weight` en la pérdida o no usarlo.
-
-**Decisión:** no usar `pos_weight`, porque en entrenamiento hay 64 malignas y 82 benignas (43,8 %
-de malignas), que es un desbalance leve. No se cambiaron épocas ni learning rate después de ver los
-resultados; cualquier cambio se hará como experimento controlado en los días 8 a 11.
-
-**Evidencia:** `src/modelo_utils.py`, `notebooks/04_preprocesamiento.ipynb`,
-`notebooks/05_entrenamiento.ipynb`, `results/preprocesamiento_ejemplos.png`,
-`results/historial_baseline.csv`, `results/registro_experimentos.csv`, commits [hash].
-
-
----
-
-## 17/11/2026 - Días 6-7: transferencia de aprendizaje, errores y preparación del control
-
-**Actividad:** Entrenamiento preliminar con ResNet18, análisis de errores en validación y preparación de la demostración.
+**Actividad:** Preprocesamiento de los recortes, entrenamiento de la línea base y de ResNet18,
+análisis de errores en validación y preparación de la demostración.
 
 **Qué hice:**
-- Entrené ResNet18 preentrenada en ImageNet, con la capa final de 1 salida (11.177.025
-  parámetros), con la misma semilla, batch, aumentos y partición que la línea base, Adam, lr 1e-4 y
-  20 épocas. Tardó 36,0 s. Mejor época: 9.
+- Preprocesé los 211 recortes con `notebooks/04_preprocesamiento.ipynb`: lectura del DICOM sin
+  `force=True`, normalización min-max por imagen, relleno a cuadrado, redimensionado a 224x224 con
+  `INTER_AREA` y guardado como PNG de 8 bits en Drive. Se generaron los 211 PNG de 224x224
+  sin errores.
+- Entrené los dos modelos con semilla 42, batch 16, Adam y aumentos solo en entrenamiento (volteo
+  horizontal y rotación de ±10°), guardando la época con mayor ROC-AUC de validación, en una GPU
+  Tesla T4:
+  - Línea base (CNN de 4 bloques Conv-BN-ReLU-MaxPool, dropout 0,5, 98.049 parámetros), lr 1e-3,
+    30 épocas, 73,9 s. Mejor época: 3.
+  - ResNet18 preentrenada en ImageNet con la capa final de 1 salida (11.177.025 parámetros),
+    lr 1e-4, 20 épocas, 36,0 s. Mejor época: 9.
 - Resultados en validación con umbral 0,5 (`results/metricas_val.csv`):
 
   | Modelo | AUC (IC 95 %) | Sensibilidad (IC 95 %) | Especificidad (IC 95 %) | Precisión | F1 |
@@ -287,12 +269,13 @@ resultados; cualquier cambio se hará como experimento controlado en los días 8
 - Falsos negativos de ResNet18 con umbral 0,5: P_00198_LEFT_CC_1 (0,129), P_00396_LEFT_MLO_1
   (0,150), P_00198_LEFT_MLO_1 (0,246) y P_00324_RIGHT_CC_1 (0,357). Hay 8 falsos positivos, con
   puntuaciones entre 0,529 y 0,902.
-- Preparé `notebooks/demo_dia7.ipynb`, con una sección por cada punto del control, y lo ejecuté
-  de arriba abajo sin errores: 0 pacientes compartidos entre particiones, 10 de 10 identificadores
-  revisados coinciden con el `PatientID` del DICOM y aparecen los 4 falsos negativos. Ensayo con
-  cronómetro: [__] minutos.
+- Preparé `notebooks/demo_dia7.ipynb` y lo ensayé de arriba abajo en [__] minutos.
 
 **Interpretación preliminar:**
+- La línea base casi no aprende con esta configuración: el AUC de validación osciló entre 0,46 y
+  0,65 y el de entrenamiento no pasó de 0,77. Con umbral 0,5 detecta solo 1 de 10 malignas, y al
+  pasar el umbral de 0,4 a 0,3 la especificidad cae de 0,778 a 0,037, o sea que casi todas sus
+  puntuaciones quedan en un rango muy estrecho.
 - ResNet18 aprende el conjunto de entrenamiento casi por completo (AUC de entrenamiento por encima
   de 0,99 desde la época 8), mientras la pérdida de validación sube después de la época 10. Eso
   indica sobreajuste, y por eso se usa el checkpoint de la época 9.
@@ -306,18 +289,95 @@ resultados; cualquier cambio se hará como experimento controlado en los días 8
   la muestra efectiva aún más pequeña.
 
 **Dificultad:**
-- Ejecuté la demo antes del notebook 04 y falló con `FileNotFoundError`, porque los PNG de
+- Ejecuté la demo antes del notebook 04 y falló con `FileNotFoundError` porque los PNG de
   `procesadas_224/` todavía no existían. Lo solucioné ejecutando los notebooks en orden: 04, 05 y
   después la demo.
 - [Añadir otra dificultad real si la hubo.]
 
-**Decisión:** usar el checkpoint de la mejor época por AUC de validación y no el de la última, por
-el sobreajuste que muestran las curvas.
+**Alternativas consideradas:** usar `pos_weight` en la pérdida o no usarlo.
 
-**Evidencia:** `notebooks/05_entrenamiento.ipynb`, `notebooks/demo_dia7.ipynb`, `results/curvas_entrenamiento.png`,
-`results/matriz_confusion_resnet18_val.png`, `results/errores_resnet18_val.png`,
-`results/pred_val_resnet18.csv`, commits [hash].
+**Decisión:** no usar `pos_weight`, porque en entrenamiento hay 64 malignas y 82 benignas (43,8 %
+de malignas), que es un desbalance leve. No se cambiaron épocas ni learning rate después de ver los
+resultados; cualquier cambio se hará como experimento controlado en los días 8 a 11.
+
+**Evidencia:** `notebooks/04_preprocesamiento.ipynb`, `notebooks/05_entrenamiento.ipynb`,
+`results/registro_experimentos.csv`, `results/historial_*.csv`, `results/curvas_entrenamiento.png`,
+`results/matriz_confusion_resnet18_val.png`, `results/errores_resnet18_val.png`, commits [hash].
+
+**Contribución individual:**
+- Efren Suárez: [ ]
+- Kevin Martínez: [ ]
+- Iván González: [ ]
+
+**Pendiente (días 8-11):** experimento controlado cambiando una sola decisión, análisis de los
+falsos negativos y selección del umbral con validación.
 
 
-**Pendiente:** (días 8-11) experimento controlado cambiando una sola decisión, análisis de los falsos
-negativos y selección del umbral con validación.
+---
+
+## 21/11/2026 - Días 8 a 11: experimento controlado, umbral y análisis de errores
+
+**Actividad:** Experimento controlado con ResNet18, selección del umbral con validación y
+análisis de los errores.
+
+**Qué hice:**
+- Ejecuté `notebooks/06_experimento.ipynb`. Cambié una sola decisión, los aumentos de
+  entrenamiento, y entrené ResNet18 con aumentos y sin aumentos, cada condición con las semillas
+  de entrenamiento 42, 7 y 123. La partición fue siempre la de la semilla 42. Antes de ejecutar
+  dejé escrita la regla: quitar los aumentos solo si el AUC medio de validación subía al menos 0,02.
+
+  | Condición | Semilla 42 | Semilla 7 | Semilla 123 | Media |
+  |---|---|---|---|---|
+  | Con aumentos | 0,819 | 0,848 | 0,796 | 0,821 |
+  | Sin aumentos | 0,881 | 0,844 | 0,852 | 0,859 |
+
+- La diferencia de medias fue 0,038, así que por la regla quedó **sin aumentos**. El modelo final
+  es el de la semilla 42 sin aumentos, con mejor época 4 y AUC de validación 0,881 entre 0,72 y 1,00.
+- La corrida con aumentos y semilla 42 dio exactamente las mismas puntuaciones que el notebook 05,
+  con diferencia máxima 0,0, lo que confirma que el entrenamiento es reproducible.
+- Ejecuté `notebooks/07_umbral_errores.ipynb`. Antes de ver la tabla fijé el criterio: el umbral
+  más alto de la rejilla de 0,05 a 0,95 con sensibilidad de validación de al menos 0,80. Salió
+  **0,3**, con 8 de 10 malignas detectadas y 23 de 27 benignas bien clasificadas, es decir,
+  sensibilidad 0,80 y especificidad 0,852.
+- Revisé la estabilidad del umbral remuestreando pacientes de validación 1000 veces: con la misma
+  regla el umbral elegido va de 0,15 a 0,40.
+
+**Hallazgos:**
+- La variación entre semillas de una misma condición llega a 0,05 de AUC, del mismo tamaño que la
+  diferencia entre condiciones, y los rangos se solapan. El resultado no permite afirmar que
+  quitar los aumentos mejore el modelo; solo que en esta validación no lo empeoró.
+- En las seis corridas el AUC de entrenamiento llega a casi 1. Los aumentos moderados no evitaron
+  el sobreajuste, aunque con ellos se tarda algunas épocas más en llegar a 1.
+- Con umbral 0,3 hay 2 falsos negativos, que son las dos vistas de la paciente P_00324, y 4 falsos
+  positivos de 4 pacientes distintas. Al cruzarlos con densidad, forma o márgenes cada grupo tiene
+  entre 0 y 3 errores, demasiado pocos para sacar conclusiones.
+
+**Dificultad:** el resultado del experimento fue el contrario del esperado, porque los aumentos
+se habían puesto para frenar el sobreajuste. Lo resolví aplicando la regla escrita antes de
+ejecutar en lugar de decidir después de ver los números, y lo reporto como un resultado no
+concluyente.
+
+**Alternativas consideradas:**
+- Para el experimento: con o sin aumentos, o relleno a cuadrado frente a estirar el recorte. Elegí
+  los aumentos porque el sobreajuste fue el problema principal del notebook 05.
+- Para el umbral: maximizar el índice de Youden o fijar una sensibilidad mínima. Elegí la
+  sensibilidad mínima porque un falso negativo es el error más costoso, como dice H2.
+
+**Decisiones:**
+1. Modelo final: ResNet18 sin aumentos, semilla 42, mejor época 4.
+2. Umbral: 0,3, elegido solo con validación. No se cambia después de ver la prueba.
+
+**Evidencia:** `notebooks/06_experimento.ipynb`, `notebooks/07_umbral_errores.ipynb`,
+`results/experimento_aumentos.csv`, `results/experimento_resumen.csv`,
+`results/experimento_curvas.png`, `results/experimento_auc_por_semilla.png`,
+`results/umbrales_val_final.csv`, `results/umbral_validacion.png`,
+`results/matriz_confusion_val_final.png`, `results/errores_val_final.png`,
+`results/modelo_final.json`, `results/umbral_final.json`, commits [hash].
+
+**Contribución individual:**
+- Efren Suárez: [ ]
+- Kevin Martínez: [ ]
+- Iván González: [ ]
+
+
+**Pendiente (días 12-14):** evaluación de la prueba una sola vez, interfaz Gradio e informe.

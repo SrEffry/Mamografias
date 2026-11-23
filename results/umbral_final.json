@@ -1,0 +1,12 @@
+{
+ "umbral": 0.3,
+ "criterio": "umbral más alto con sensibilidad de validación >= 0.8",
+ "modelo": "exp_sin_aumentos_s42.pt",
+ "sens_val": 0.8,
+ "sens_val_ic95": "0.49-0.94",
+ "esp_val": 0.852,
+ "esp_val_ic95": "0.68-0.94",
+ "umbral_bootstrap_p2_5": 0.15,
+ "umbral_bootstrap_p97_5": 0.4,
+ "fecha": "2026-11-21 22:13"
+}
