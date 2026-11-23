@@ -18,7 +18,7 @@
 | EDA de imágenes y preprocesamiento | Hecho |
 | Línea base y transferencia de aprendizaje | Hecho |
 | Experimento controlado, errores y umbral | Hecho |
-| Evaluación final en prueba (una sola vez) | Pendiente |
+| Evaluación final en prueba (una sola vez) | Hecho |
 | Interfaz Gradio | Pendiente |
 | Informe | Pendiente |
 
@@ -295,9 +295,35 @@ menos falsos positivos.
   misma paciente (P_00324), y 4 falsos positivos de 4 pacientes distintas. Por las variables
   del CSV no se puede sacar una conclusión: los grupos tienen de 0 a 3 errores.
 
-### Evaluación final en prueba
+### Evaluación final en prueba (28 lesiones, 15 pacientes, 11 malignas)
 
-[Pendiente: días 12-14.]
+`notebooks/08_prueba_final.ipynb`, ejecutado **una sola vez** el 21/11/2026 con el modelo y el
+umbral fijados antes (candado en `results/prueba_final/EVALUADA.txt`).
+
+| Modelo y umbral | AUC (IC 95 %) | TP | FN | TN | FP | Sensibilidad (IC 95 %) | Especificidad (IC 95 %) | Precisión | F1 |
+|---|---|---|---|---|---|---|---|---|---|
+| **ResNet18 final, umbral 0,3** | **0,706 (0,44-0,97)** | 5 | 6 | 14 | 3 | **0,455 (0,21-0,72)** | **0,824 (0,59-0,94)** | 0,625 | 0,526 |
+| ResNet18 final, umbral 0,5 | 0,706 (0,44-0,97) | 3 | 8 | 16 | 1 | 0,273 (0,10-0,57) | 0,941 (0,73-0,99) | 0,750 | 0,400 |
+| Línea base, umbral 0,5 | 0,754 (0,53-0,92) | 0 | 11 | 17 | 0 | 0,000 (0,00-0,26) | 1,000 (0,82-1,00) | - | 0,000 |
+
+- **Validación frente a prueba (mismo modelo y umbral):** el AUC baja de 0,881 a 0,706 y la
+  sensibilidad de 0,80 a 0,455. La especificidad se mantiene parecida (0,852 y 0,824). La caída
+  era esperable porque la época, la condición del experimento y el umbral se eligieron con
+  validación.
+- **H1 no se confirma.** En validación ResNet18 superó a la línea base por 0,17 de AUC, pero en
+  prueba la línea base tuvo 0,754 y ResNet18 0,706. Los intervalos se solapan casi por completo,
+  así que con 28 lesiones no se puede decir cuál es mejor.
+- **H2 se cumple en la dirección esperada.** Con umbral 0,5 la sensibilidad (0,273) es menor que
+  la especificidad (0,941), y al bajar a 0,3 la sensibilidad sube a 0,455 y la especificidad baja
+  a 0,824. Pero la sensibilidad objetivo de 0,80 que se logró en validación no se alcanzó en prueba.
+- **La línea base con umbral 0,5 clasifica las 28 lesiones como benignas.** Su AUC de 0,754
+  indica que ordena razonablemente las lesiones, pero todas sus puntuaciones quedan por debajo de
+  0,5. Por eso el AUC y la matriz de confusión cuentan cosas distintas.
+- **Errores en prueba:** los 6 falsos negativos vienen de solo 3 pacientes (3 lesiones de P_00074,
+  2 de P_00406 y 1 de P_00347), con puntuaciones de 0,04 a 0,22. Los 3 falsos positivos son de 3
+  pacientes distintas. Los errores no son independientes entre sí.
+
+Figuras: `results/prueba_final/matriz_y_roc_prueba.png` y `results/prueba_final/errores_prueba.png`.
 
 La salida del modelo es una **puntuación**, no una probabilidad clínica calibrada: un 0,6 no
 significa 60 % de probabilidad de malignidad.
@@ -324,8 +350,12 @@ significa 60 % de probabilidad de malignidad.
 - Las imágenes de CBIS-DDSM son mamografías de película escaneadas (DDSM, de finales de los años
   90), lo que puede limitar la generalización a mamografías digitales actuales.
 - La salida del modelo es una puntuación, no una probabilidad clínica calibrada.
+- El modelo, la condición del experimento y el umbral se eligieron con la misma validación de 37
+  lesiones; en prueba el rendimiento bajó (AUC de 0,881 a 0,706 y sensibilidad de 0,80 a 0,455).
 - Los aumentos moderados no evitaron el sobreajuste: el AUC de entrenamiento llega a casi 1 en
   todas las corridas.
+- Con una sola partición de 28 lesiones de prueba no se puede afirmar que ResNet18 sea mejor que
+  la línea base.
 
 ## 8. Estructura del repositorio
 

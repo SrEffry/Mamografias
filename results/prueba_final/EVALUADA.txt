@@ -1,0 +1,1 @@
+Evaluada el 2026-11-21 22:16 con exp_sin_aumentos_s42.pt y umbral 0.3
